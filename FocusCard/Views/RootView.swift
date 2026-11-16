@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    /// "system" follows the iPhone's light or dark setting. Settings can force one.
+    @AppStorage("appearance") private var appearance = "system"
 
     var body: some View {
         Group {
@@ -16,11 +18,21 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.5), value: model.lock)
-        .sensoryFeedback(.success, trigger: model.lock)
+        .haptic(.success, trigger: model.lock)
+        .preferredColorScheme(preferredScheme)
+        .tint(Theme.blue)
         .alert("Focus Card", isPresented: alertShown) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.alertMessage ?? "")
+        }
+    }
+
+    private var preferredScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
         }
     }
 
@@ -29,21 +41,5 @@ struct RootView: View {
             get: { model.alertMessage != nil },
             set: { if !$0 { model.alertMessage = nil } }
         )
-    }
-}
-
-/// The black full-width capsule used for the main action on a screen.
-struct PrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .frame(height: 60)
-            .foregroundStyle(Color(.systemBackground))
-            .background(Color.primary.opacity(isEnabled ? 1 : 0.3), in: Capsule())
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.3), value: configuration.isPressed)
     }
 }

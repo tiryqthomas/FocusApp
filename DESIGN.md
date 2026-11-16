@@ -7,7 +7,7 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 
 - **Purpose:** cut phone distraction. You choose apps, tap a physical card to lock them, and can only unlock them by tapping a paired card again.
 - **Setting:** home, desk and bedtime. It isn't a parental-control app.
-- **Platform:** iPhone, portrait, iOS 26, SwiftUI with Liquid Glass. Black and white, and the appearance follows the system, except that the locked state is always black.
+- **Platform:** iPhone, portrait, iOS 26, SwiftUI in a vintage Y2K handset look (blue title bar, square bevelled buttons, monospaced text). Light and dark follow the system, with an override in Settings, except that the locked state is always black.
 - **Key data:** modes (name, app selection, schedule), paired card IDs, lock state, session history, emergency allowance.
 - **Monetisation:** free.
 
@@ -39,6 +39,10 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 | 13 | Stats range | Day, Week and Month switch, starting on Week |
 | 14 | Stats shown | Screen time, pickups, top apps, and Focus Card stats (time locked, streak, emergency unlocks used), each with a trend against the average |
 | 15 | Dumb phone mode | Minimal Home Screen through an iOS Focus and a Shortcuts automation, with a setup guide in Settings |
+| 16 | Look | Y2K BlackBerry-style skin over Apple behaviours. Locked screens are black with pale-blue monospaced text and scanlines. |
+| 17 | Dark mode | Follows the system. Settings can force Light or Dark. |
+| 18 | Lost card | "I lost my card" on the locked screen. Two ways in, neither uses an emergency unlock: a recovery code made at setup (FC-XXXX-XXXX), or a 24-hour wait that unlocks by itself. |
+| 19 | Haptics | On by default, with a switch in Settings |
 
 ## Platform limits to remember
 

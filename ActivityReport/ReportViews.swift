@@ -19,8 +19,8 @@ struct SummaryView: View {
             Spacer(minLength: 0)
             HStack(alignment: .bottom, spacing: 5) {
                 ForEach(stats.bars.suffix(7)) { bar in
-                    Capsule()
-                        .fill(bar.isLatest ? Color.primary : Color.secondary.opacity(0.45))
+                    Rectangle()
+                        .fill(bar.isLatest ? ReportTheme.blue : Color.secondary.opacity(0.45))
                         .frame(width: 8, height: max(6, 56 * height(bar)))
                 }
             }
@@ -99,7 +99,7 @@ struct StatsReportView: View {
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(LinearGradient(
-                        colors: [Color.primary.opacity(0.18), Color.primary.opacity(0)],
+                        colors: [ReportTheme.blue.opacity(0.25), ReportTheme.blue.opacity(0)],
                         startPoint: .top, endPoint: .bottom))
                     LineMark(
                         x: .value("Time", bar.date, unit: unit),
@@ -107,7 +107,7 @@ struct StatsReportView: View {
                     )
                     .interpolationMethod(.catmullRom)
                     .lineStyle(StrokeStyle(lineWidth: 2.5))
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(ReportTheme.blue)
                 }
                 RuleMark(y: .value("Average", stats.baseline / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
@@ -129,7 +129,7 @@ struct StatsReportView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(18)
-        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .reportPanel()
     }
 
     /// One cell per day, darker for more screen time (chart 4).
@@ -139,8 +139,8 @@ struct StatsReportView: View {
         return HStack(spacing: 6) {
             ForEach(days) { bar in
                 VStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.primary.opacity(peak > 0 ? 0.1 + 0.9 * bar.seconds / peak : 0.1))
+                    Rectangle()
+                        .fill(ReportTheme.blue.opacity(peak > 0 ? 0.1 + 0.9 * bar.seconds / peak : 0.1))
                         .frame(height: 34)
                     Text(bar.date.formatted(.dateTime.weekday(.narrow)))
                         .font(.caption2)
@@ -173,7 +173,7 @@ struct StatsReportView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .reportPanel()
     }
 
     private func row(_ name: String, value: String, note: String?) -> some View {

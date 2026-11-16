@@ -49,6 +49,7 @@ struct ModeEditView: View {
                     }
                 }
             }
+            .lcdForm()
             .navigationTitle(isNew ? "New mode" : original.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

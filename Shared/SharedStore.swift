@@ -55,6 +55,21 @@ final class SharedStore {
         set { defaults.set(newValue, forKey: "onboarded") }
     }
 
+    /// "I lost my card" code, made at setup. Using it never costs an emergency unlock.
+    var recoveryCode: String? {
+        get { defaults.string(forKey: "recoveryCode") }
+        set { defaults.set(newValue, forKey: "recoveryCode") }
+    }
+
+    /// When the 24-hour recovery wait ends. Nil when no wait is running.
+    var recoveryWaitEnd: Date? {
+        get { defaults.object(forKey: "recoveryWaitEnd") as? Date }
+        set {
+            if let newValue { defaults.set(newValue, forKey: "recoveryWaitEnd") }
+            else { defaults.removeObject(forKey: "recoveryWaitEnd") }
+        }
+    }
+
     var didCreateDefaultModes: Bool {
         get { defaults.bool(forKey: "didCreateDefaultModes") }
         set { defaults.set(newValue, forKey: "didCreateDefaultModes") }

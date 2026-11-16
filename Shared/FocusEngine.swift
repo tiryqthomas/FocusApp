@@ -17,11 +17,13 @@ enum FocusEngine {
         settings.shield.applicationCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
         settings.shield.webDomains = selection.webDomainTokens.isEmpty ? nil : selection.webDomainTokens
         settings.shield.webDomainCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
+        store.recoveryWaitEnd = nil
         store.lock = LockState(modeID: mode.id, modeName: mode.name, since: .now)
     }
 
     static func unlock(emergency: Bool, store: SharedStore = SharedStore()) {
         settings.clearAllSettings()
+        store.recoveryWaitEnd = nil
         guard let lock = store.lock else { return }
         var sessions = store.sessions
         sessions.append(FocusSession(modeName: lock.modeName, start: lock.since, end: .now, emergency: emergency))

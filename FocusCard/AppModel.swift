@@ -17,6 +17,8 @@ final class AppModel {
     var isAuthorized = false
     var selectedModeID: UUID?
     var alertMessage: String?
+    var recoveryWaitEnd: Date?
+    var recoveryCode: String?
 
     init() {
         if !store.didCreateDefaultModes {
@@ -27,6 +29,9 @@ final class AppModel {
     }
 
     func reload() {
+        finishRecoveryWaitIfDue()
+        recoveryWaitEnd = store.recoveryWaitEnd
+        recoveryCode = store.recoveryCode
         modes = store.modes
         cards = store.cards
         sessions = store.sessions
@@ -179,6 +184,50 @@ final class AppModel {
     func setEmergencyAllowance(_ value: Int) {
         store.emergencyAllowance = value
         emergencyAllowance = value
+    }
+
+    // MARK: Lost card recovery (neither way uses an emergency unlock)
+
+    /// Makes the recovery code once, like FC-7K4M-92QX.
+    func ensureRecoveryCode() {
+        guard store.recoveryCode == nil else { return }
+        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        func chunk() -> String { String((0..<4).map { _ in alphabet.randomElement() ?? "X" }) }
+        store.recoveryCode = "FC-\(chunk())-\(chunk())"
+        recoveryCode = store.recoveryCode
+    }
+
+    /// Returns false when the code is wrong.
+    @discardableResult
+    func unlockWithRecoveryCode(_ input: String) -> Bool {
+        func normal(_ s: String) -> String {
+            s.uppercased().filter { $0.isLetter || $0.isNumber }
+        }
+        guard lock != nil, let code = store.recoveryCode, normal(input) == normal(code) else { return false }
+        FocusEngine.unlock(emergency: false, store: store)
+        reload()
+        alertMessage = "Unlocked. Pair a replacement card in Cards."
+        return true
+    }
+
+    func startRecoveryWait() {
+        guard lock != nil, store.recoveryWaitEnd == nil else { return }
+        store.recoveryWaitEnd = Date.now.addingTimeInterval(24 * 60 * 60)
+        recoveryWaitEnd = store.recoveryWaitEnd
+    }
+
+    func cancelRecoveryWait() {
+        store.recoveryWaitEnd = nil
+        recoveryWaitEnd = nil
+    }
+
+    /// Unlocks by itself once the 24 hours are up.
+    func finishRecoveryWaitIfDue() {
+        guard store.lock != nil, let end = store.recoveryWaitEnd, end <= .now else { return }
+        FocusEngine.unlock(emergency: false, store: store)
+        lock = store.lock
+        recoveryWaitEnd = nil
+        sessions = store.sessions
     }
 
     // MARK: Focus Card stats (Decision 14)

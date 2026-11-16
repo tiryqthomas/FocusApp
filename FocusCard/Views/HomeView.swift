@@ -3,8 +3,9 @@ import FamilyControls
 import SwiftUI
 
 /// Canvas screen 1: Focus, unlocked.
-/// Modes are a vertical list of pills, like Apple's Focus screen. Tap a pill to
-/// select it. The three dots change its blocked apps, name and schedule, or delete it.
+/// Modes are a list of rows. Tap a row to select it. The "..." button changes its
+/// blocked apps, name and schedule, or deletes it. Cards and Settings sit in the
+/// bottom bar, like the softkeys on an old handset.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var editing: FocusMode?
@@ -13,7 +14,7 @@ struct HomeView: View {
     @State private var pickingModeID: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             if model.cards.isEmpty {
                 NavigationLink { CardsView() } label: {
                     HStack {
@@ -22,8 +23,8 @@ struct HomeView: View {
                         Image(systemName: "chevron.right")
                     }
                     .font(.subheadline.weight(.medium))
-                    .padding(16)
-                    .glassEffect(.regular, in: .capsule)
+                    .padding(14)
+                    .lcdPanel()
                 }
                 .buttonStyle(.plain)
             }
@@ -31,17 +32,15 @@ struct HomeView: View {
             NavigationLink { StatsView() } label: { StatsSummaryCard() }
                 .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Unlocked")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text("Focus")
-                    .font(.largeTitle.bold())
-            }
+            Text("Modes")
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
 
-            VStack(spacing: 10) {
+            VStack(spacing: 0) {
                 ForEach(model.modes) { mode in
-                    ModePill(
+                    ModeRow(
                         mode: mode,
                         selected: mode.id == model.selectedModeID,
                         onSelect: { model.selectedModeID = mode.id },
@@ -53,13 +52,17 @@ struct HomeView: View {
                 Button {
                     editing = FocusMode(name: "")
                 } label: {
-                    Text("New mode")
+                    Text("+ New mode")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.blue)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .overlay(Capsule().strokeBorder(Color.secondary, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                        .frame(height: 46)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
+            .lcdPanel()
+            .animation(.spring(duration: 0.35), value: model.modes)
 
             Spacer(minLength: 0)
 
@@ -68,10 +71,10 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(model.emergencyLeft) of \(model.emergencyAllowance)")
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
+                    .contentTransition(.numericText())
             }
-            .font(.subheadline)
-            .padding(.horizontal, 6)
+            .font(.footnote)
 
             Button {
                 Task { await model.lockSelected() }
@@ -81,24 +84,26 @@ struct HomeView: View {
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.selectedMode == nil)
         }
-        .padding(20)
-        .background(Color(.systemGroupedBackground))
+        .padding(14)
+        .lcdScreen()
+        .navigationTitle("Focus")
+        .navigationBarTitleDisplayMode(.inline)
+        .lcdNavigationBar()
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                NavigationLink { CardsView() } label: { Image(systemName: "creditcard") }
-                    .accessibilityLabel("Cards")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Settings")
+            ToolbarItemGroup(placement: .bottomBar) {
+                NavigationLink("Cards") { CardsView() }
+                Spacer()
+                NavigationLink("Settings") { SettingsView() }
             }
         }
+        .toolbarBackground(Theme.bar, for: .bottomBar)
+        .toolbarBackground(.visible, for: .bottomBar)
         .sheet(item: $editing) { mode in
             ModeEditView(mode: mode)
         }
         // Apple's picker: apps, categories and websites.
         .familyActivityPicker(isPresented: $pickingApps, selection: $pickSelection)
-        .sensoryFeedback(.selection, trigger: model.selectedModeID)
+        .haptic(.selection, trigger: model.selectedModeID)
         .onChange(of: pickingApps) { _, isOpen in
             guard !isOpen, let id = pickingModeID,
                   var mode = model.modes.first(where: { $0.id == id })
@@ -116,8 +121,8 @@ struct HomeView: View {
     }
 }
 
-/// One mode as a pill. The row selects it; the three dots open its options.
-struct ModePill: View {
+/// One mode as a row. The row selects it; the "..." button opens its options.
+struct ModeRow: View {
     let mode: FocusMode
     let selected: Bool
     let onSelect: () -> Void
@@ -126,27 +131,23 @@ struct ModePill: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             Button(action: onSelect) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(selected ? Color.primary : Color.secondary.opacity(0.18))
-                        Image(systemName: "lock.fill")
-                            .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
-                    }
-                    .frame(width: 40, height: 40)
+                HStack(spacing: 12) {
+                    Image(systemName: "lock.fill")
+                        .font(.title3)
+                        .frame(width: 32)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(mode.name)
                             .font(.headline)
                         Text(mode.detail)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                            .opacity(selected ? 0.85 : 0.6)
                     }
                     Spacer(minLength: 0)
                 }
-                .contentShape(.rect)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(selected ? .isSelected : [])
@@ -156,19 +157,21 @@ struct ModePill: View {
                 Button("Name and schedule", systemImage: "pencil", action: onEdit)
                 Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.title3)
-                    .frame(width: 40, height: 40)
-                    .contentShape(.circle)
+                Text("...")
+                    .font(.headline)
+                    .frame(width: 40, height: 32)
+                    .overlay(Rectangle().strokeBorder(selected ? Color.white : Theme.buttonLine, lineWidth: 1))
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("\(mode.name) options")
         }
-        .padding(12)
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Color.primary, lineWidth: selected ? 2 : 0)
-        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .foregroundStyle(selected ? Color.white : Color.primary)
+        .background(selected ? Theme.blue : Theme.panel)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
         .animation(.spring(duration: 0.3), value: selected)
     }
 }
@@ -179,10 +182,10 @@ struct StatsSummaryCard: View {
         DeviceActivityReport(.summary, filter: StatsRange.week.filter())
             .frame(height: 84)
             .allowsHitTesting(false)
-            .padding(18)
+            .padding(14)
             .frame(maxWidth: .infinity)
-            .contentShape(.rect)
-            .glassEffect(.regular, in: .rect(cornerRadius: 24))
+            .contentShape(Rectangle())
+            .lcdPanel()
             .accessibilityLabel("Screen time stats")
     }
 }

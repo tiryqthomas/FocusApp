@@ -63,10 +63,7 @@ struct StatsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                Picker("Range", selection: $range) {
-                    ForEach(StatsRange.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
+                LCDSegment(options: StatsRange.allCases, title: { $0.rawValue }, selection: $range)
 
                 categoryRow
 
@@ -77,8 +74,10 @@ struct StatsView: View {
             }
             .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
+        .lcdScreen()
+        .lcdNavigationBar()
         .navigationTitle("Stats")
+        .navigationBarTitleDisplayMode(.inline)
         .familyActivityPicker(isPresented: $choosingCategories, selection: $categorySelection)
     }
 
@@ -96,15 +95,16 @@ struct StatsView: View {
             }
             Spacer()
             Button("Choose") { choosingCategories = true }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color(.systemBackground))
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(Color.primary, in: Capsule())
+                .background(Theme.titleGradient)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .lcdPanel()
     }
 
     private var focusCardStats: some View {
@@ -128,7 +128,7 @@ struct StatsView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .lcdPanel()
     }
 
     private func row(_ name: String, value: String, note: String?) -> some View {

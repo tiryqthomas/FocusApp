@@ -14,7 +14,7 @@ struct CardsView: View {
                     ForEach(model.cards) { card in
                         LabeledContent {
                             Text("•••• \(String(card.tagID.suffix(4)))")
-                                .monospaced()
+                                .font(Theme.lcdFont(17))
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(card.name)
@@ -36,8 +36,14 @@ struct CardsView: View {
                 } label: {
                     Label("Pair a card", systemImage: "wave.3.right")
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             }
         }
+        .animation(.spring(duration: 0.35), value: model.cards)
+        .lcdForm()
         .navigationTitle("Cards")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
