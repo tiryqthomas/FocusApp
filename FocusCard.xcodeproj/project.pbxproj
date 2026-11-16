@@ -1,0 +1,665 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		FC0000000000000000000050 /* ShieldConfig.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FC0000000000000000000021 /* ShieldConfig.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FC0000000000000000000051 /* ActivityMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FC0000000000000000000022 /* ActivityMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FC0000000000000000000052 /* ActivityReport.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = FC0000000000000000000023 /* ActivityReport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FC0000000000000000000070 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC0000000000000000000031;
+			remoteInfo = ShieldConfig;
+		};
+		FC0000000000000000000071 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC0000000000000000000032;
+			remoteInfo = ActivityMonitor;
+		};
+		FC0000000000000000000072 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FC0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FC0000000000000000000033;
+			remoteInfo = ActivityReport;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FC0000000000000000000093 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FC0000000000000000000050 /* ShieldConfig.appex in Embed Foundation Extensions */,
+				FC0000000000000000000051 /* ActivityMonitor.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000094 /* Embed ExtensionKit Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				FC0000000000000000000052 /* ActivityReport.appex in Embed ExtensionKit Extensions */,
+			);
+			name = "Embed ExtensionKit Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		FC0000000000000000000020 /* FocusCard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusCard.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC0000000000000000000021 /* ShieldConfig.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShieldConfig.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC0000000000000000000022 /* ActivityMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActivityMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC0000000000000000000023 /* ActivityReport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = ActivityReport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FC0000000000000000000010 /* FocusCard */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FocusCard;
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000011 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000012 /* ShieldConfig */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShieldConfig;
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000013 /* ActivityMonitor */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ActivityMonitor;
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000014 /* ActivityReport */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ActivityReport;
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000015 /* Config */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FC0000000000000000000091 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000096 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000098 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC000000000000000000009A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		FC0000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				FC0000000000000000000010 /* FocusCard */,
+				FC0000000000000000000011 /* Shared */,
+				FC0000000000000000000012 /* ShieldConfig */,
+				FC0000000000000000000013 /* ActivityMonitor */,
+				FC0000000000000000000014 /* ActivityReport */,
+				FC0000000000000000000015 /* Config */,
+				FC0000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FC0000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FC0000000000000000000020 /* FocusCard.app */,
+				FC0000000000000000000021 /* ShieldConfig.appex */,
+				FC0000000000000000000022 /* ActivityMonitor.appex */,
+				FC0000000000000000000023 /* ActivityReport.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FC0000000000000000000030 /* FocusCard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC0000000000000000000083 /* Build configuration list for PBXNativeTarget "FocusCard" */;
+			buildPhases = (
+				FC0000000000000000000090 /* Sources */,
+				FC0000000000000000000091 /* Frameworks */,
+				FC0000000000000000000092 /* Resources */,
+				FC0000000000000000000093 /* Embed Foundation Extensions */,
+				FC0000000000000000000094 /* Embed ExtensionKit Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FC0000000000000000000060 /* PBXTargetDependency */,
+				FC0000000000000000000061 /* PBXTargetDependency */,
+				FC0000000000000000000062 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				FC0000000000000000000010 /* FocusCard */,
+				FC0000000000000000000011 /* Shared */,
+			);
+			name = FocusCard;
+			packageProductDependencies = (
+			);
+			productName = FocusCard;
+			productReference = FC0000000000000000000020 /* FocusCard.app */;
+			productType = "com.apple.product-type.application";
+		};
+		FC0000000000000000000031 /* ShieldConfig */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC0000000000000000000086 /* Build configuration list for PBXNativeTarget "ShieldConfig" */;
+			buildPhases = (
+				FC0000000000000000000095 /* Sources */,
+				FC0000000000000000000096 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FC0000000000000000000012 /* ShieldConfig */,
+				FC0000000000000000000011 /* Shared */,
+			);
+			name = ShieldConfig;
+			packageProductDependencies = (
+			);
+			productName = ShieldConfig;
+			productReference = FC0000000000000000000021 /* ShieldConfig.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FC0000000000000000000032 /* ActivityMonitor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC0000000000000000000089 /* Build configuration list for PBXNativeTarget "ActivityMonitor" */;
+			buildPhases = (
+				FC0000000000000000000097 /* Sources */,
+				FC0000000000000000000098 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FC0000000000000000000013 /* ActivityMonitor */,
+				FC0000000000000000000011 /* Shared */,
+			);
+			name = ActivityMonitor;
+			packageProductDependencies = (
+			);
+			productName = ActivityMonitor;
+			productReference = FC0000000000000000000022 /* ActivityMonitor.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FC0000000000000000000033 /* ActivityReport */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC000000000000000000008C /* Build configuration list for PBXNativeTarget "ActivityReport" */;
+			buildPhases = (
+				FC0000000000000000000099 /* Sources */,
+				FC000000000000000000009A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FC0000000000000000000014 /* ActivityReport */,
+			);
+			name = ActivityReport;
+			packageProductDependencies = (
+			);
+			productName = ActivityReport;
+			productReference = FC0000000000000000000023 /* ActivityReport.appex */;
+			productType = "com.apple.product-type.extensionkit-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FC0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					FC0000000000000000000030 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					FC0000000000000000000031 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					FC0000000000000000000032 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					FC0000000000000000000033 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = FC0000000000000000000080 /* Build configuration list for PBXProject "FocusCard" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = FC0000000000000000000002;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FC0000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FC0000000000000000000030 /* FocusCard */,
+				FC0000000000000000000031 /* ShieldConfig */,
+				FC0000000000000000000032 /* ActivityMonitor */,
+				FC0000000000000000000033 /* ActivityReport */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FC0000000000000000000092 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FC0000000000000000000090 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000095 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000097 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FC0000000000000000000099 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FC0000000000000000000060 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC0000000000000000000031 /* ShieldConfig */;
+			targetProxy = FC0000000000000000000070 /* PBXContainerItemProxy */;
+		};
+		FC0000000000000000000061 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC0000000000000000000032 /* ActivityMonitor */;
+			targetProxy = FC0000000000000000000071 /* PBXContainerItemProxy */;
+		};
+		FC0000000000000000000062 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FC0000000000000000000033 /* ActivityReport */;
+			targetProxy = FC0000000000000000000072 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		FC0000000000000000000081 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP_ID = "group.$(BUNDLE_ID_PREFIX).focuscard";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_ID_PREFIX = com.yourname;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FC0000000000000000000082 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP_ID = "group.$(BUNDLE_ID_PREFIX).focuscard";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_ID_PREFIX = com.yourname;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		FC0000000000000000000084 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/FocusCard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/FocusCard-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Focus Card";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FC0000000000000000000085 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/FocusCard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/FocusCard-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Focus Card";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FC0000000000000000000087 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ShieldConfig.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ShieldConfig-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ShieldConfig;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ShieldConfig";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FC0000000000000000000088 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ShieldConfig.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ShieldConfig-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ShieldConfig;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ShieldConfig";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FC000000000000000000008A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ActivityMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ActivityMonitor-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ActivityMonitor;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ActivityMonitor";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FC000000000000000000008B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ActivityMonitor.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ActivityMonitor-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ActivityMonitor;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ActivityMonitor";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FC000000000000000000008D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ActivityReport.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ActivityReport-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ActivityReport;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ActivityReport";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FC000000000000000000008E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/ActivityReport.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ActivityReport-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = ActivityReport;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).focuscard.ActivityReport";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FC0000000000000000000080 /* Build configuration list for PBXProject "FocusCard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC0000000000000000000081 /* Debug */,
+				FC0000000000000000000082 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC0000000000000000000083 /* Build configuration list for PBXNativeTarget "FocusCard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC0000000000000000000084 /* Debug */,
+				FC0000000000000000000085 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC0000000000000000000086 /* Build configuration list for PBXNativeTarget "ShieldConfig" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC0000000000000000000087 /* Debug */,
+				FC0000000000000000000088 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC0000000000000000000089 /* Build configuration list for PBXNativeTarget "ActivityMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC000000000000000000008A /* Debug */,
+				FC000000000000000000008B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC000000000000000000008C /* Build configuration list for PBXNativeTarget "ActivityReport" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC000000000000000000008D /* Debug */,
+				FC000000000000000000008E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = FC0000000000000000000001 /* Project object */;
+}
