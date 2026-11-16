@@ -62,6 +62,8 @@ final class NFCScanner: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendab
 
     func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
         guard let tag = tags.first else { return }
+        // Shows on the sheet as soon as a tag is found, so we can tell detection apart from a failed read.
+        session.alertMessage = "Card found. Keep it still."
         session.connect(to: tag) { [weak self] error in
             guard let self else { return }
             if error != nil {
