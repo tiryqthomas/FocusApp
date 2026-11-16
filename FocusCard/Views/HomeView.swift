@@ -98,6 +98,7 @@ struct HomeView: View {
         }
         // Apple's picker: apps, categories and websites.
         .familyActivityPicker(isPresented: $pickingApps, selection: $pickSelection)
+        .sensoryFeedback(.selection, trigger: model.selectedModeID)
         .onChange(of: pickingApps) { _, isOpen in
             guard !isOpen, let id = pickingModeID,
                   var mode = model.modes.first(where: { $0.id == id })

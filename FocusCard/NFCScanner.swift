@@ -1,5 +1,6 @@
 import CoreNFC
 import Foundation
+import UIKit
 
 /// Reads a card or sticker with Apple's NDEF reader, the same kind of read that
 /// Shortcuts' NFC automation uses. A card's ID is the hex of its first NDEF record.
@@ -96,6 +97,7 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
     private func complete(payload: Data, session: NFCNDEFReaderSession) {
         let hex = payload.map { String(format: "%02X", $0) }.joined()
         if accept(hex) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             session.alertMessage = successMessage
             finish(.success(hex))
             session.invalidate()

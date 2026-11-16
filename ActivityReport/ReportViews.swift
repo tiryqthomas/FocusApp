@@ -46,12 +46,20 @@ struct SummaryView: View {
 /// The full Stats screen content (canvas screen 6).
 struct StatsReportView: View {
     let stats: PeriodStats
+    /// Drives the draw-in animation: the chart grows from zero when it appears.
+    @State private var drawn = false
 
     var body: some View {
         VStack(spacing: 18) {
             screenTimeCard
             card {
                 row("Pickups a day", value: "\(Int(stats.pickupsPerDay.rounded()))", note: pickupChange)
+            }
+            if stats.period != .day {
+                card(title: "Week heatmap") {
+                    heatmap
+                        .padding(.vertical, 12)
+                }
             }
             if !stats.topApps.isEmpty {
                 card(title: stats.period == .day ? "Top apps today" : "Top apps, daily average") {
@@ -82,13 +90,33 @@ struct StatsReportView: View {
                 }
             }
             Chart {
-                ForEach(stats.bars) { bar in
-                    BarMark(
-                        x: .value("Time", bar.date, unit: stats.period.hourly ? .hour : .day),
-                        y: .value("Minutes", bar.seconds / 60)
-                    )
-                    .foregroundStyle(bar.isLatest ? Color.primary : Color.secondary.opacity(0.45))
-                    .cornerRadius(4)
+                if stats.period.hourly {
+                    ForEach(stats.bars) { bar in
+                        BarMark(
+                            x: .value("Time", bar.date, unit: .hour),
+                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
+                        )
+                        .foregroundStyle(bar.isLatest ? Color.primary : Color.secondary.opacity(0.45))
+                        .cornerRadius(4)
+                    }
+                } else {
+                    ForEach(stats.bars) { bar in
+                        AreaMark(
+                            x: .value("Day", bar.date, unit: .day),
+                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(LinearGradient(
+                            colors: [Color.primary.opacity(0.18), Color.primary.opacity(0)],
+                            startPoint: .top, endPoint: .bottom))
+                        LineMark(
+                            x: .value("Day", bar.date, unit: .day),
+                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5))
+                        .foregroundStyle(Color.primary)
+                    }
                 }
                 RuleMark(y: .value("Average", stats.baseline / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
@@ -102,6 +130,8 @@ struct StatsReportView: View {
                     }
                 }
             }
+            .animation(.spring(duration: 0.8), value: drawn)
+            .onAppear { drawn = true }
             .frame(height: 160)
             Text("Dashed line: \(stats.period.averageText), \(Format.duration(stats.baseline))")
                 .font(.caption)
@@ -109,6 +139,27 @@ struct StatsReportView: View {
         }
         .padding(18)
         .glassEffect(.regular, in: .rect(cornerRadius: 24))
+    }
+
+    /// One cell per day, darker for more screen time (chart 4).
+    private var heatmap: some View {
+        let days = Array(stats.bars.suffix(7))
+        let peak = days.map(\.seconds).max() ?? 0
+        return HStack(spacing: 6) {
+            ForEach(days) { bar in
+                VStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(peak > 0 ? 0.1 + 0.9 * bar.seconds / peak : 0.1))
+                        .frame(height: 34)
+                    Text(bar.date.formatted(.dateTime.weekday(.narrow)))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(bar.date.formatted(.dateTime.weekday(.wide))), \(Format.duration(bar.seconds))")
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var pickupChange: String? {

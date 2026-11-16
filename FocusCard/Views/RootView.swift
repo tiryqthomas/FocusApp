@@ -15,7 +15,7 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.spring(duration: 0.5), value: model.lock)
+        .animation(.easeInOut(duration: 0.5), value: model.lock)
         .sensoryFeedback(.success, trigger: model.lock)
         .alert("Focus Card", isPresented: alertShown) {
             Button("OK", role: .cancel) {}
