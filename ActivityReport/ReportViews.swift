@@ -90,33 +90,24 @@ struct StatsReportView: View {
                 }
             }
             Chart {
-                if stats.period.hourly {
-                    ForEach(stats.bars) { bar in
-                        BarMark(
-                            x: .value("Time", bar.date, unit: .hour),
-                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
-                        )
-                        .foregroundStyle(bar.isLatest ? Color.primary : Color.secondary.opacity(0.45))
-                        .cornerRadius(4)
-                    }
-                } else {
-                    ForEach(stats.bars) { bar in
-                        AreaMark(
-                            x: .value("Day", bar.date, unit: .day),
-                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(LinearGradient(
-                            colors: [Color.primary.opacity(0.18), Color.primary.opacity(0)],
-                            startPoint: .top, endPoint: .bottom))
-                        LineMark(
-                            x: .value("Day", bar.date, unit: .day),
-                            y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5))
-                        .foregroundStyle(Color.primary)
-                    }
+                // Smooth line for every range. Day plots by hour, so you can see how use changes through the day.
+                let unit: Calendar.Component = stats.period.hourly ? .hour : .day
+                ForEach(stats.bars) { bar in
+                    AreaMark(
+                        x: .value("Time", bar.date, unit: unit),
+                        y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(LinearGradient(
+                        colors: [Color.primary.opacity(0.18), Color.primary.opacity(0)],
+                        startPoint: .top, endPoint: .bottom))
+                    LineMark(
+                        x: .value("Time", bar.date, unit: unit),
+                        y: .value("Minutes", drawn ? bar.seconds / 60 : 0)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5))
+                    .foregroundStyle(Color.primary)
                 }
                 RuleMark(y: .value("Average", stats.baseline / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
