@@ -1,43 +1,45 @@
 import CoreNFC
 import Foundation
 
-/// Reads an NFC card's hardware ID with Apple's scan sheet.
-/// Works with NTAG213/215/216 cards and stickers, and most other tags.
-final class NFCScanner: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendable {
+/// Reads a card or sticker with Apple's NDEF reader, the same kind of read that
+/// Shortcuts' NFC automation uses. A card's ID is the hex of its first NDEF record.
+final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Sendable {
     enum ScanError: LocalizedError {
         case unavailable
         case cancelled
         case rejected
+        case empty
 
         var errorDescription: String? {
             switch self {
             case .unavailable: "This iPhone can't read NFC cards."
             case .cancelled: nil
             case .rejected: "That card isn't paired."
+            case .empty: "This card has no data. Write a link or text to it in Shortcuts, then try again."
             }
         }
     }
 
-    private var session: NFCTagReaderSession?
+    private var session: NFCNDEFReaderSession?
     private var continuation: CheckedContinuation<String, Error>?
     private var successMessage = ""
     private var accept: (String) -> Bool = { _ in true }
 
-    /// Shows the scan sheet and returns the tag's ID as hex.
+    /// Shows the scan sheet and returns the card's ID as hex.
     /// - Parameters:
     ///   - prompt: The line shown on the sheet while it waits.
     ///   - success: The line shown when the card is accepted.
     ///   - accept: Return false to reject a card (for example, one that isn't paired).
     func scan(prompt: String, success: String, accept: @escaping (String) -> Bool = { _ in true }) async throws -> String {
-        guard NFCTagReaderSession.readingAvailable else { throw ScanError.unavailable }
+        guard NFCNDEFReaderSession.readingAvailable else { throw ScanError.unavailable }
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             self.successMessage = success
             self.accept = accept
-            let session = NFCTagReaderSession(pollingOption: [.iso14443, .iso15693], delegate: self, queue: nil)
-            session?.alertMessage = prompt
+            let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
+            session.alertMessage = prompt
             self.session = session
-            session?.begin()
+            session.begin()
         }
     }
 
@@ -47,12 +49,13 @@ final class NFCScanner: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendab
         continuation.resume(with: result)
     }
 
-    func tagReaderSessionDidBecomeActive(_ session: NFCTagReaderSession) {}
+    func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {}
 
-    func tagReaderSession(_ session: NFCTagReaderSession, didInvalidateWithError error: Error) {
-        if let readerError = error as? NFCReaderError,
-           readerError.code == .readerSessionInvalidationErrorUserCanceled
-            || readerError.code == .readerSessionInvalidationErrorFirstNDEFTagRead {
+    func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
+        if let readerError = error as? NFCReaderError, readerError.code == .readerSessionInvalidationErrorUserCanceled {
+            finish(.failure(ScanError.cancelled))
+        } else if let readerError = error as? NFCReaderError, readerError.code == .readerSessionInvalidationErrorFirstNDEFTagRead {
+            // Normal end after a successful read; the result was already delivered.
             finish(.failure(ScanError.cancelled))
         } else {
             finish(.failure(error))
@@ -60,39 +63,23 @@ final class NFCScanner: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendab
         self.session = nil
     }
 
-    func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
-        guard let tag = tags.first else { return }
-        // Shows on the sheet as soon as a tag is found, so we can tell detection apart from a failed read.
-        session.alertMessage = "Card found. Keep it still."
-        session.connect(to: tag) { [weak self] error in
-            guard let self else { return }
-            if error != nil {
-                session.invalidate(errorMessage: "Hold the card still and try again.")
-                return
-            }
-            guard let id = Self.identifier(of: tag) else {
-                session.invalidate(errorMessage: "This card can't be read.")
-                return
-            }
-            let hex = id.map { String(format: "%02X", $0) }.joined()
-            if self.accept(hex) {
-                session.alertMessage = self.successMessage
-                self.finish(.success(hex))
-                session.invalidate()
-            } else {
-                session.invalidate(errorMessage: ScanError.rejected.errorDescription ?? "")
-                self.finish(.failure(ScanError.rejected))
-            }
+    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
+        guard let payload = messages.first?.records.first?.payload, !payload.isEmpty else {
+            session.invalidate(errorMessage: ScanError.empty.errorDescription ?? "")
+            finish(.failure(ScanError.empty))
+            return
+        }
+        let hex = payload.map { String(format: "%02X", $0) }.joined()
+        if accept(hex) {
+            session.alertMessage = successMessage
+            finish(.success(hex))
+        } else {
+            session.invalidate(errorMessage: ScanError.rejected.errorDescription ?? "")
+            finish(.failure(ScanError.rejected))
         }
     }
 
-    private static func identifier(of tag: NFCTag) -> Data? {
-        switch tag {
-        case .miFare(let tag): tag.identifier
-        case .iso15693(let tag): tag.identifier
-        case .iso7816(let tag): tag.identifier
-        case .feliCa(let tag): tag.currentIDm
-        @unknown default: nil
-        }
+    func readerSession(_ session: NFCNDEFReaderSession, didDetect tags: [NFCNDEFTag]) {
+        // Not used: didDetectNDEFs handles reads.
     }
 }
