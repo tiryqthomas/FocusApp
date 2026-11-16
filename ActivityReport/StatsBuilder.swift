@@ -76,7 +76,7 @@ struct PeriodStats {
 }
 
 enum StatsBuilder {
-    static func build(from data: DeviceActivityResults<DeviceActivityData>, period: Period) async -> PeriodStats {
+    static func build<R: AsyncSequence>(from data: R, period: Period) async -> PeriodStats where R.Element == DeviceActivityData {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         let currentStart = calendar.date(byAdding: .day, value: -(period.days - 1), to: today) ?? today
