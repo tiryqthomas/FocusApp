@@ -175,7 +175,7 @@ struct ModePill: View {
 /// Home's stats card. The numbers are drawn by the Screen Time report extension.
 struct StatsSummaryCard: View {
     var body: some View {
-        DeviceActivityReport(.summary, filter: StatsRange.week.filter)
+        DeviceActivityReport(.summary, filter: StatsRange.week.filter())
             .frame(height: 84)
             .allowsHitTesting(false)
             .padding(18)

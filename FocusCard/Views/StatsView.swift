@@ -1,4 +1,5 @@
 import DeviceActivity
+import FamilyControls
 import SwiftUI
 
 extension DeviceActivityReport.Context {
@@ -33,7 +34,8 @@ enum StatsRange: String, CaseIterable, Identifiable {
         }
     }
 
-    var filter: DeviceActivityFilter {
+    /// `categories` limits the report to the chosen categories. Empty means all.
+    func filter(categories: Set<ActivityCategoryToken> = []) -> DeviceActivityFilter {
         let calendar = Calendar.current
         let now = Date.now
         let today = calendar.startOfDay(for: now)
@@ -42,11 +44,11 @@ enum StatsRange: String, CaseIterable, Identifiable {
         }
         switch self {
         case .day:
-            return DeviceActivityFilter(segment: .hourly(during: since(daysBack: 1)), users: .all, devices: .init([.iPhone]))
+            return DeviceActivityFilter(segment: .hourly(during: since(daysBack: 1)), users: .all, devices: .init([.iPhone]), categories: categories)
         case .week:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 27)), users: .all, devices: .init([.iPhone]))
+            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 27)), users: .all, devices: .init([.iPhone]), categories: categories)
         case .month:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 55)), users: .all, devices: .init([.iPhone]))
+            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 55)), users: .all, devices: .init([.iPhone]), categories: categories)
         }
     }
 }
@@ -55,6 +57,8 @@ enum StatsRange: String, CaseIterable, Identifiable {
 struct StatsView: View {
     @Environment(AppModel.self) private var model
     @State private var range: StatsRange = .week
+    @State private var categorySelection = FamilyActivitySelection()
+    @State private var choosingCategories = false
 
     var body: some View {
         ScrollView {
@@ -64,8 +68,10 @@ struct StatsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                DeviceActivityReport(range.context, filter: range.filter)
-                    .frame(height: 640)
+                categoryRow
+
+                DeviceActivityReport(range.context, filter: range.filter(categories: categorySelection.categoryTokens))
+                    .frame(minHeight: 720)
 
                 focusCardStats
             }
@@ -73,6 +79,32 @@ struct StatsView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Stats")
+        .familyActivityPicker(isPresented: $choosingCategories, selection: $categorySelection)
+    }
+
+    /// Category filter, in the same glass style as the rest of the screen (canvas screen 6).
+    private var categoryRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Categories")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(categorySelection.categoryTokens.isEmpty
+                     ? "All categories"
+                     : "\(categorySelection.categoryTokens.count) selected")
+                    .font(.headline)
+            }
+            Spacer()
+            Button("Choose") { choosingCategories = true }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color(.systemBackground))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.primary, in: Capsule())
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .glassEffect(.regular, in: .rect(cornerRadius: 22))
     }
 
     private var focusCardStats: some View {

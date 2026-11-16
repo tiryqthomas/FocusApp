@@ -63,23 +63,45 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
         self.session = nil
     }
 
-    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
-        guard let payload = messages.first?.records.first?.payload, !payload.isEmpty else {
-            session.invalidate(errorMessage: ScanError.empty.errorDescription ?? "")
-            finish(.failure(ScanError.empty))
-            return
+    /// Implementing this method (rather than didDetectNDEFs) means the session hands us the tag,
+    /// so we connect, check it can hold data, and read its first record ourselves.
+    /// The old no-op version of this method is why nothing ever happened.
+    func readerSession(_ session: NFCNDEFReaderSession, didDetect tags: [NFCNDEFTag]) {
+        guard let tag = tags.first else { return }
+        session.connect(to: tag) { [weak self] error in
+            guard let self else { return }
+            if error != nil {
+                session.invalidate(errorMessage: "Hold the card still and try again.")
+                self.finish(.failure(ScanError.cancelled))
+                return
+            }
+            tag.queryNDEFStatus { status, _, statusError in
+                guard statusError == nil, status != .notSupported else {
+                    session.invalidate(errorMessage: "This card can't store data. Try an NTAG213 or NTAG215 sticker.")
+                    self.finish(.failure(ScanError.empty))
+                    return
+                }
+                tag.readNDEF { message, readError in
+                    guard readError == nil, let payload = message?.records.first?.payload, !payload.isEmpty else {
+                        session.invalidate(errorMessage: ScanError.empty.errorDescription ?? "")
+                        self.finish(.failure(ScanError.empty))
+                        return
+                    }
+                    self.complete(payload: payload, session: session)
+                }
+            }
         }
+    }
+
+    private func complete(payload: Data, session: NFCNDEFReaderSession) {
         let hex = payload.map { String(format: "%02X", $0) }.joined()
         if accept(hex) {
             session.alertMessage = successMessage
             finish(.success(hex))
+            session.invalidate()
         } else {
             session.invalidate(errorMessage: ScanError.rejected.errorDescription ?? "")
             finish(.failure(ScanError.rejected))
         }
-    }
-
-    func readerSession(_ session: NFCNDEFReaderSession, didDetect tags: [NFCNDEFTag]) {
-        // Not used: didDetectNDEFs handles reads.
     }
 }
