@@ -76,7 +76,12 @@ struct PeriodStats {
 }
 
 enum StatsBuilder {
+    /// Never throws to the caller: a failed read shows empty stats.
     static func build<R: AsyncSequence>(from data: R, period: Period) async -> PeriodStats where R.Element == DeviceActivityData {
+        (try? await collect(from: data, period: period)) ?? PeriodStats(period: period)
+    }
+
+    static func collect<R: AsyncSequence>(from data: R, period: Period) async throws -> PeriodStats where R.Element == DeviceActivityData {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         let currentStart = calendar.date(byAdding: .day, value: -(period.days - 1), to: today) ?? today
@@ -91,8 +96,8 @@ enum StatsBuilder {
         var currentApps: [String: (name: String, seconds: TimeInterval)] = [:]
         var previousApps: [String: TimeInterval] = [:]
 
-        for await device in data {
-            for await segment in device.activitySegments {
+        for try await device in data {
+            for try await segment in device.activitySegments {
                 let start = segment.dateInterval.start
                 let duration = segment.totalActivityDuration
                 let isCurrent = start >= currentStart
@@ -105,11 +110,9 @@ enum StatsBuilder {
                     previous += duration
                 }
 
-                for await category in segment.categories {
-                    let loosePickups = category.totalPickupsWithoutApplicationActivity
-                    if isCurrent { currentPickups += loosePickups } else if isPrevious { previousPickups += loosePickups }
+                for try await category in segment.categories {
 
-                    for await app in category.applications {
+                    for try await app in category.applications {
                         let name = app.application.localizedDisplayName ?? app.application.bundleIdentifier ?? "App"
                         let key = app.application.bundleIdentifier ?? name
                         if isCurrent {
