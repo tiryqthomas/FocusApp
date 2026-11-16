@@ -64,6 +64,9 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
         self.session = nil
     }
 
+    /// The protocol requires this one. It is never used, because the tag version below takes over.
+    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {}
+
     /// Implementing this method (rather than didDetectNDEFs) means the session hands us the tag,
     /// so we connect, check it can hold data, and read its first record ourselves.
     /// The old no-op version of this method is why nothing ever happened.
