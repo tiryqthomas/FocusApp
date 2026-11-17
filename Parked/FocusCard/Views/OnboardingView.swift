@@ -15,14 +15,14 @@ struct OnboardingView: View {
                 case 0:
                     page(
                         symbol: "lock.fill",
-                        title: "Focus Card",
+                        title: "Keycard",
                         text: "Lock distracting apps with a tap of your card."
                     )
                 case 1:
                     page(
                         symbol: "hourglass",
                         title: "Screen Time access",
-                        text: "Focus Card uses Screen Time to block the apps you choose. Your data stays on this iPhone."
+                        text: "Keycard uses Screen Time to block the apps you choose. Your data stays on this iPhone."
                     )
                 case 2:
                     page(

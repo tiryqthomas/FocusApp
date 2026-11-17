@@ -112,7 +112,7 @@ struct StatsView: View {
         let stats = model.focusStats(days: range.days)
         let change = stats.timeLocked - stats.previousTimeLocked
         return VStack(alignment: .leading, spacing: 0) {
-            Text("Focus Card")
+            Text("Keycard")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.top, 14)

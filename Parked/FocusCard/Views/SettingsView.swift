@@ -60,7 +60,7 @@ struct MinimalSetupView: View {
     var body: some View {
         List {
             Section {
-                Text("When Focus Card locks, your iPhone can switch to a near-empty Home Screen in grayscale. Set it up once in iOS.")
+                Text("When Keycard locks, your iPhone can switch to a near-empty Home Screen in grayscale. Set it up once in iOS.")
                     .foregroundStyle(.secondary)
             }
             Section("1. Make a minimal Home Screen") {
@@ -68,14 +68,14 @@ struct MinimalSetupView: View {
                 step("Add only the apps you want while locked, such as Phone, Messages, Maps and Camera.")
             }
             Section("2. Create a Focus") {
-                step("Open Settings, then Focus, then +, then Custom. Name it Focus Card.")
+                step("Open Settings, then Focus, then +, then Custom. Name it Keycard.")
                 step("Under Customize Screens, choose the Home Screen page you just made.")
             }
             Section("3. Add the automation") {
-                step("Open Shortcuts, then Automation, then +, then App. Choose Focus Card and Is Closed.")
+                step("Open Shortcuts, then Automation, then +, then App. Choose Keycard and Is Closed.")
                 step("Choose Run Immediately.")
-                step("Add the action Is Focus Card Locked.")
-                step("Add If: if the result is true, add Set Focus Card On and Set Color Filters On. Otherwise, add Set Focus Card Off and Set Color Filters Off.")
+                step("Add the action Is Keycard Locked.")
+                step("Add If: if the result is true, add Set Keycard On and Set Color Filters On. Otherwise, add Set Keycard Off and Set Color Filters Off.")
             }
             Section {
                 Link(destination: URL(string: "shortcuts://")!) {

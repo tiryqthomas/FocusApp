@@ -44,7 +44,7 @@ struct StatsView: View {
                 card("When you use your phone") { heatmap }
                 card("Top apps") { topApps }
                 VStack(spacing: Theme.groupSpacing) {
-                    SectionLabel("Focus Card")
+                    SectionLabel("Keycard")
                     focusStats.card(padding: 0)
                 }
 

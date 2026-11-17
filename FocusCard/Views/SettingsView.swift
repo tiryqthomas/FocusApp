@@ -81,7 +81,7 @@ struct SettingsView: View {
 /// Asks the user to keep the recovery password in Apple's Passwords app.
 ///
 /// iOS only shows its own "Save Password?" sheet for apps linked to a website
-/// (webcredentials). Focus Card has none, so this copies the password and
+/// (webcredentials). Keycard has none, so this copies the password and
 /// opens Passwords, where it's pasted into a new entry.
 struct SaveRecoveryView: View {
     @Environment(AppModel.self) private var model
@@ -100,7 +100,7 @@ struct SaveRecoveryView: View {
             Text("Save Recovery Password?")
                 .font(.title3.weight(.semibold))
             Text(copied
-                 ? "Copied. In Passwords, tap +, name it Focus Card, and paste the password."
+                 ? "Copied. In Passwords, tap +, name it Keycard, and paste the password."
                  : "Save it to Passwords so you can unlock if your card is lost or will not scan.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

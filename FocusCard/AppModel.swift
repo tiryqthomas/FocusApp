@@ -64,8 +64,8 @@ final class AppModel {
         let center = UNUserNotificationCenter.current()
         _ = try? await center.requestAuthorization(options: [.alert, .sound])
         let content = UNMutableNotificationContent()
-        content.title = "Focus Card"
-        content.body = "Your 24-hour wait is over. Open Focus Card to unlock your apps."
+        content.title = "Keycard"
+        content.body = "Your 24-hour wait is over. Open Keycard to unlock your apps."
         content.sound = .default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Self.waitLength, repeats: false)
         try? await center.add(UNNotificationRequest(identifier: Self.waitNotificationID, content: content, trigger: trigger))
@@ -283,15 +283,15 @@ final class AppModel {
     }
 
     /// Opened from the card's link: the card was tapped while no scan was running
-    /// (iOS reads it in the background and offers to open Focus Card).
+    /// (iOS reads it in the background and offers to open Keycard).
     /// Locking and unlocking still need the button, so explain that.
     func handleCardLink(_ url: URL) async {
         guard url.scheme == "focuscard", url.host == "card" else { return }
         reload()
         print("[FocusCard] card tapped outside a scan: \(url)")
         alertMessage = lock != nil
-            ? "Card tapped, but Focus Card wasn't scanning. Tap Scan card to unlock first, then hold your card to the top of the iPhone."
-            : "Card tapped, but Focus Card wasn't scanning. Tap Scan card to lock first, then hold your card to the top of the iPhone."
+            ? "Card tapped, but Keycard wasn't scanning. Tap Scan card to unlock first, then hold your card to the top of the iPhone."
+            : "Card tapped, but Keycard wasn't scanning. Tap Scan card to lock first, then hold your card to the top of the iPhone."
     }
 
     private func handle(_ error: Error) {
