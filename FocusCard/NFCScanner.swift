@@ -133,8 +133,9 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
 
     private func complete(payload: Data, session: NFCNDEFReaderSession) {
         let hex = payload.map { String(format: "%02X", $0) }.joined()
+        print("[FocusCard] read card \(hex)")
         if accept(hex) {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
             session.alertMessage = successMessage
             finish(.success(hex))
             session.invalidate()

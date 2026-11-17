@@ -79,12 +79,14 @@ final class AppModel {
                 success: locking ? "Locked." : "Unlocked.",
                 accept: { $0 == card.tagID }
             )
+            print("[FocusCard] card accepted, \(locking ? "locking" : "unlocking")")
             if locking {
                 FocusEngine.lock(mode, store: store)
             } else {
                 FocusEngine.unlock(store: store)
             }
             reload()
+            print("[FocusCard] locked state now: \(lock != nil)")
         } catch {
             handle(error)
         }
@@ -92,10 +94,13 @@ final class AppModel {
 
     private func handle(_ error: Error) {
         if let scanError = error as? NFCScanner.ScanError {
-            // Cancelled and rejected scans already explain themselves on the sheet.
-            if case .unavailable = scanError { alertMessage = scanError.errorDescription }
+            // While testing, every failure except a plain cancel shows in the app too,
+            // and goes to the Xcode console.
+            print("[FocusCard] scan failed: \(scanError)")
+            if let text = scanError.errorDescription { alertMessage = text }
             return
         }
+        print("[FocusCard] scan error: \(error)")
         alertMessage = error.localizedDescription
     }
 }
