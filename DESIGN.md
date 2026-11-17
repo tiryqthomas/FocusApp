@@ -7,7 +7,7 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 
 - **Purpose:** cut phone distraction. You choose apps, tap a physical card to lock them, and can only unlock them by tapping a paired card again.
 - **Setting:** home, desk and bedtime. It isn't a parental-control app.
-- **Platform:** iPhone, portrait, iOS 26, SwiftUI in a vintage Y2K handset look (blue title bar, square bevelled buttons, monospaced text). Light and dark follow the system, with an override in Settings, except that the locked state is always black.
+- **Platform:** iPhone, portrait, iOS 26, SwiftUI in Apple's own look (see Decision 20). Light and dark follow the system, with an override in Settings.
 - **Key data:** modes (name, app selection, schedule), paired card IDs, lock state, session history, emergency allowance.
 - **Monetisation:** free.
 
@@ -43,6 +43,14 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 | 17 | Dark mode | Follows the system. Settings can force Light or Dark. |
 | 18 | Lost card | "I lost my card" on the locked screen. Two ways in, neither uses an emergency unlock: a recovery code made at setup (FC-XXXX-XXXX), or a 24-hour wait that unlocks by itself. |
 | 19 | Haptics | On by default, with a switch in Settings |
+| 20 | Look (replaces 16) | Apple light and dark, SF Pro, system colors. Blue marks the selection, green only the locked state. Prototype: https://claude.ai/artifact/AibhcWQBWLQ7mFYhdJxLQV (2026-11-17) |
+| 21 | Home | One screen, no scrolling: screen time chart, mode capsule, label and value rows, black Lock capsule. Settings in the top bar. |
+| 22 | Chart | Stacked bars by category (Social, Entertainment, Productivity, Other), Day/Week/Month. Tapping it, or its chevron, opens Stats. |
+| 23 | Locked look (replaces 9) | Follows light or dark. Only the mode badge, a thin count-up timer in a ring, and the ways out. |
+| 24 | Lock length | No countdowns. A lock runs until a card tap, an emergency unlock, or the recovery password. |
+| 25 | Lost card (replaces 18) | Recovery password only (FC-XXXX-XXXX, made on first launch). No 24-hour wait, no "generate new" option. |
+| 26 | Saving the password | A "Save Recovery Password?" prompt on launch until saved, plus "Save to Passwords" in Settings. |
+| 27 | Stats screen | Range switch, category chips, smooth trend line, usage heatmap, top apps, Focus Card stats from the app's own lock history. |
 
 ## Platform limits to remember
 

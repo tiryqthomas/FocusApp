@@ -14,6 +14,13 @@ final class AppModel {
     var lock: LockState?
     var isAuthorized = false
     var alertMessage: String?
+    var emergency = EmergencyAllowance()
+    var focusLog = FocusLog()
+    var appearance: Appearance = .system
+    var recoveryCode = ""
+    var recoveryCodeSaved = false
+    /// Shown once per launch until the recovery code is saved.
+    var showSaveRecovery = false
 
     init() { reload() }
 
@@ -22,6 +29,90 @@ final class AppModel {
         card = store.card
         lock = store.lock
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
+        var allowance = store.emergency
+        allowance.refillIfNewWeek()
+        store.emergency = allowance
+        emergency = allowance
+        focusLog = store.focusLog
+        appearance = store.appearance
+        recoveryCode = store.recoveryCode
+        recoveryCodeSaved = store.recoveryCodeSaved
+    }
+
+    /// Offers to save the recovery code, once per launch, until it's saved.
+    func offerRecoverySaveIfNeeded() {
+        if !recoveryCodeSaved && lock == nil { showSaveRecovery = true }
+    }
+
+    func markRecoveryCodeSaved() {
+        store.recoveryCodeSaved = true
+        reload()
+    }
+
+    func setAppearance(_ value: Appearance) {
+        store.appearance = value
+        reload()
+    }
+
+    /// Emergency unlocks per week, 0 to 10. Raising it adds to this week's remaining.
+    func setEmergencyPerWeek(_ value: Int) {
+        var allowance = store.emergency
+        allowance.perWeek = min(10, max(0, value))
+        allowance.used = min(allowance.used, allowance.perWeek)
+        store.emergency = allowance
+        reload()
+    }
+
+    /// Today's locked time, including the session running now.
+    func focusedToday(now: Date = .now) -> Double {
+        var total = focusLog.seconds(on: now)
+        if let lock {
+            let start = max(lock.since, Calendar.current.startOfDay(for: now))
+            total += max(0, now.timeIntervalSince(start))
+        }
+        return total
+    }
+
+    /// Mon to Sun of this week, in seconds, including the running session.
+    func focusedThisWeek(now: Date = .now) -> Double {
+        let calendar = Calendar.current
+        let monday = EmergencyAllowance.mondayOfThisWeek(now)
+        var total = 0.0
+        for offset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: monday), day <= now else { continue }
+            total += focusLog.seconds(on: day)
+        }
+        if let lock { total += max(0, now.timeIntervalSince(max(lock.since, monday))) }
+        return total
+    }
+
+    /// Uses one emergency unlock. The caller has already asked "Are you sure?".
+    func emergencyUnlock() {
+        guard lock != nil, emergency.remaining > 0 else { return }
+        var allowance = store.emergency
+        allowance.used += 1
+        store.emergency = allowance
+        endLock(.emergency)
+    }
+
+    /// Unlocks with the recovery code. Doesn't use an emergency unlock.
+    /// Returns false when the code doesn't match.
+    func unlockWithRecovery(_ entered: String) -> Bool {
+        let cleaned = entered.uppercased().filter { !$0.isWhitespace }
+        guard lock != nil, cleaned == recoveryCode else { return false }
+        endLock(.recovery)
+        return true
+    }
+
+    private func endLock(_ method: UnlockMethod) {
+        if let lock {
+            var log = store.focusLog
+            log.add(from: lock.since, to: .now)
+            if method == .card { log.cardUnlocks += 1 }
+            store.focusLog = log
+        }
+        FocusEngine.unlock(store: store)
+        reload()
     }
 
     func requestAuthorization() async {
@@ -83,7 +174,7 @@ final class AppModel {
             if locking {
                 FocusEngine.lock(mode, store: store)
             } else {
-                FocusEngine.unlock(store: store)
+                endLock(.card)
             }
             reload()
             print("[FocusCard] locked state now: \(lock != nil)")

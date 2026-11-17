@@ -38,4 +38,39 @@ final class SharedStore {
         get { load("lockState") }
         set { save(newValue, "lockState") }
     }
+
+    var emergency: EmergencyAllowance {
+        get { load("emergency") ?? EmergencyAllowance() }
+        set { save(newValue, "emergency") }
+    }
+
+    /// Made once, on first launch. Unlocks without the card.
+    var recoveryCode: String {
+        if let code: String = load("recoveryCode") { return code }
+        let code = Self.makeRecoveryCode()
+        save(code, "recoveryCode")
+        return code
+    }
+
+    var recoveryCodeSaved: Bool {
+        get { load("recoveryCodeSaved") ?? false }
+        set { save(newValue, "recoveryCodeSaved") }
+    }
+
+    var focusLog: FocusLog {
+        get { load("focusLog") ?? FocusLog() }
+        set { save(newValue, "focusLog") }
+    }
+
+    var appearance: Appearance {
+        get { load("appearance") ?? .system }
+        set { save(newValue, "appearance") }
+    }
+
+    /// "FC-7K2M-9QXD". Leaves out 0, O, 1 and I so it's easy to read back.
+    static func makeRecoveryCode() -> String {
+        let letters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        func group() -> String { String((0..<4).map { _ in letters.randomElement()! }) }
+        return "FC-\(group())-\(group())"
+    }
 }
