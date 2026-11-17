@@ -1,4 +1,4 @@
-# Focus Card (simplified)
+# Keycard (simplified)
 
 Scan an NFC card to block your chosen apps. Scan the same card again to unblock them. Plain Apple styling.
 
@@ -23,10 +23,10 @@ This branch is the core loop only, for testing. The full version (modes, schedul
 | Try this while locked | Expected |
 | --- | --- |
 | Restart the phone, force-quit the app, go Home | Apps stay blocked |
-| Delete Focus Card (or any app) | Not allowed while locked |
+| Delete Keycard (or any app) | Not allowed while locked |
 | Change the date or time | Automatic time can't be turned off while locked |
 | Scan a different card | Rejected |
-| Settings, Screen Time, turn off Focus Card's access | Unblocks. No code can stop this; it's your safety exit |
+| Settings, Screen Time, turn off Keycard's access | Unblocks. No code can stop this; it's your safety exit |
 | Write the same text onto another sticker | Unlocks (card is identified by its text, not its chip) |
 
 ## Folders

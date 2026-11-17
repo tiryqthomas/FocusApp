@@ -21,7 +21,7 @@ struct RootView: View {
         .sheet(isPresented: $model.showSaveRecovery) {
             SaveRecoveryView()
         }
-        .alert("Focus Card", isPresented: alertShown) {
+        .alert("Keycard", isPresented: alertShown) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.alertMessage ?? "")

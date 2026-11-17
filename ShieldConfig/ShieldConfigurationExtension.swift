@@ -31,7 +31,7 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
             backgroundColor: .systemBackground,
             icon: UIImage(systemName: "lock.fill")?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal),
             title: ShieldConfiguration.Label(text: "\(name ?? "This app") is locked", color: .label),
-            subtitle: ShieldConfiguration.Label(text: "\(modeName) is on. Open Focus Card and tap your card to unlock.", color: .secondaryLabel),
+            subtitle: ShieldConfiguration.Label(text: "\(modeName) is on. Open Keycard and tap your card to unlock.", color: .secondaryLabel),
             primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: .white),
             primaryButtonBackgroundColor: .systemBlue
         )

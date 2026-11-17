@@ -33,8 +33,8 @@ enum FocusEngine {
 
         settings.shield.applicationCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
         settings.shield.webDomainCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
-        // Bypass fix: while locked, apps (including Focus Card) can't be deleted,
-        // since deleting Focus Card would clear the shield.
+        // Bypass fix: while locked, apps (including Keycard) can't be deleted,
+        // since deleting Keycard would clear the shield.
         settings.application.denyAppRemoval = true
         // Bypass fix: the date and time must stay automatic while locked.
         settings.dateAndTime.requireAutomaticDateAndTime = true

@@ -16,6 +16,6 @@
 		</dict>
 	</array>
 	<key>NFCReaderUsageDescription</key>
-	<string>Focus Card reads your card to lock and unlock apps.</string>
+	<string>Keycard reads your card to lock and unlock apps.</string>
 </dict>
 </plist>
