@@ -16,7 +16,7 @@ struct RecoveryCodeSheet: View {
                 Text(code)
                     .font(.system(size: 32, weight: .semibold, design: .monospaced))
                     .textSelection(.enabled)
-                Text("Write this down or save it somewhere other than this phone. You won't see it again.")
+                Text("Tap Copy, then add it in the Passwords app (tap +, name it Focus Card). You won't see it again.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                 Spacer()
