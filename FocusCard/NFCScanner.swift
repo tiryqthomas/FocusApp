@@ -41,11 +41,20 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
             self.successMessage = success
             self.accept = accept
             self.writeIfBlank = writeIfBlank
-            let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
-            session.alertMessage = prompt
-            self.session = session
-            session.begin()
+            self.prompt = prompt
+            self.busyRetries = 2
+            self.startSession()
         }
+    }
+
+    private var prompt = ""
+    private var busyRetries = 0
+
+    private func startSession() {
+        let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
+        session.alertMessage = prompt
+        self.session = session
+        session.begin()
     }
 
     private func finish(_ result: Result<String, Error>) {
@@ -57,6 +66,18 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
     func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {}
 
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
+        // An earlier session can report its end after a new scan has started.
+        // Ignore it, or it would cancel the new scan.
+        guard session === self.session else { return }
+        // "System resource unavailable": the previous NFC session hadn't fully closed.
+        // Wait a moment and try again instead of failing.
+        if let readerError = error as? NFCReaderError,
+           readerError.code == .readerSessionInvalidationErrorSystemIsBusy,
+           busyRetries > 0, continuation != nil {
+            busyRetries -= 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startSession() }
+            return
+        }
         if let readerError = error as? NFCReaderError, readerError.code == .readerSessionInvalidationErrorUserCanceled {
             finish(.failure(ScanError.cancelled))
         } else if let readerError = error as? NFCReaderError, readerError.code == .readerSessionInvalidationErrorFirstNDEFTagRead {
