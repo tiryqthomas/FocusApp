@@ -16,6 +16,13 @@ struct StatsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.spacing) {
+                // In the page, not the toolbar: a toolbar adds its own glass
+                // around the control, which drew a second outline.
+                Picker("Range", selection: $range.animation(.snappy)) {
+                    ForEach(StatsRange.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(((category.map { $0.name + " · " } ?? "") + (range == .day ? "Today" : "Daily average")).uppercased())
                         .font(.caption.weight(.semibold))
@@ -52,15 +59,7 @@ struct StatsView: View {
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Stats")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Picker("Range", selection: $range.animation(.snappy)) {
-                    ForEach(StatsRange.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 186)
-            }
-        }
+
     }
 
     private var categoryChips: some View {

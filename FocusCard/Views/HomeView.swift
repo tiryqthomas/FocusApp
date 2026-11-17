@@ -173,8 +173,11 @@ struct HomeView: View {
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
                             .frame(width: Theme.pillHeight, height: Theme.pillHeight)
+                            .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                            .overlay { Circle().strokeBorder(Color.primary.opacity(0.12), lineWidth: 1) }
+                            .contentShape(Circle())
                     }
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .buttonStyle(.plain)
                     .accessibilityLabel("New Focus")
                 }
             }
@@ -202,9 +205,7 @@ struct HomeView: View {
             Button {
                 pickApps(for: model.mode)
             } label: {
-                DetailRow(label: "Blocked in \(model.mode.name)", chevron: true) {
-                    Text(model.mode.selectionSummary)
-                }
+                StackedRow(label: "Blocked in \(model.mode.name)", value: model.mode.selectionSummary)
             }
             .buttonStyle(.plain)
             .disabled(!model.isAuthorized)
@@ -242,7 +243,8 @@ struct RowDivider: View {
     var body: some View { Divider().padding(.leading, Theme.cardPadding) }
 }
 
-/// One mode as a capsule. Selected is solid; the rest are glass.
+/// One mode as a capsule. Selected is solid blue with white text; the rest are
+/// plain grouped capsules with full-strength text, so none of them look disabled.
 struct ModeChip: View {
     let mode: FocusMode
     let selected: Bool
@@ -252,15 +254,16 @@ struct ModeChip: View {
         Button(action: onSelect) {
             Label(mode.name, systemImage: mode.symbol)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
+                .foregroundStyle(selected ? Color.white : Color.primary)
                 .padding(.horizontal, Theme.spacing)
                 .frame(height: Theme.pillHeight)
-                .background {
-                    if selected { Capsule().fill(Color.primary) }
+                .background(selected ? Color.blue : Color(.secondarySystemGroupedBackground), in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(selected ? Color.clear : Color.primary.opacity(0.12), lineWidth: 1)
                 }
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(selected ? .identity : .regular.interactive(), in: .capsule)
         .accessibilityLabel("\(mode.name), \(mode.selectionSummary)")
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
@@ -330,6 +333,34 @@ struct WeekFocusCard: View {
                 .font(.footnote.weight(.semibold))
                 .monospacedDigit()
         }
+    }
+}
+
+/// A label with its value on the line below, for values too long to share a line.
+struct StackedRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: Theme.groupSpacing) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, Theme.cardPadding)
+        .padding(.vertical, 12)
+        .frame(minHeight: Theme.rowHeight)
+        .contentShape(Rectangle())
     }
 }
 
