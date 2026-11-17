@@ -61,6 +61,23 @@ struct LockedView: View {
                     confirmEmergency = true
                 }
 
+                if let end = model.recoveryWaitEnd {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        HStack {
+                            Label("Unlocks in \(Self.countdown(to: end, now: context.date))", systemImage: "hourglass")
+                                .monospacedDigit()
+                            Spacer()
+                            Button("Cancel Wait") { model.cancelRecoveryWait() }
+                                .fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 20)
+                        .frame(height: 54)
+                        .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+
                 Button("Lost your card?") { showRecovery = true }
                     .font(.subheadline.weight(.medium))
                     .frame(minHeight: 44)
@@ -79,8 +96,21 @@ struct LockedView: View {
         }
         .sheet(isPresented: $showRecovery) {
             RecoveryUnlockView()
-                .presentationDetents([.medium])
+                .presentationDetents([.large])
         }
+        // The 24-hour wait unlocks by itself when it runs out.
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                model.finishRecoveryWaitIfDue()
+            }
+        }
+    }
+
+    /// "23:59:58"
+    static func countdown(to end: Date, now: Date) -> String {
+        let total = max(0, Int(end.timeIntervalSince(now).rounded(.up)))
+        return String(format: "%02d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
     }
 
     /// "1:24:08", or "4:08" under an hour.
@@ -172,7 +202,30 @@ struct RecoveryUnlockView: View {
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
+            Divider().padding(.vertical, 4)
+
+            if model.recoveryWaitEnd == nil {
+                Text("Don't know the password? Start a 24-hour wait. Your apps unlock when it ends, and it doesn't use an emergency unlock.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    model.startRecoveryWait()
+                    dismiss()
+                } label: {
+                    Text("Start 24-Hour Wait").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+            } else {
+                Text("A 24-hour wait is running. Your card or password still unlocks right away.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
             Button("Cancel") { dismiss() }
+                .frame(minHeight: 44)
         }
         .padding(24)
         .sensoryFeedback(.error, trigger: attempts)

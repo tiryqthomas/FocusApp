@@ -22,6 +22,8 @@ final class AppModel {
     var recoveryCodeSaved = false
     /// Shown once per launch until the recovery code is saved.
     var showSaveRecovery = false
+    /// When the 24-hour wait ends, if one is running.
+    var recoveryWaitEnd: Date?
 
     init() { reload() }
 
@@ -39,6 +41,31 @@ final class AppModel {
         appearance = store.appearance
         recoveryCode = store.recoveryCode
         recoveryCodeSaved = store.recoveryCodeSaved
+        recoveryWaitEnd = store.recoveryWaitEnd
+        finishRecoveryWaitIfDue()
+    }
+
+    // MARK: 24-hour wait (card lost and password unknown)
+
+    /// Starts the wait. Doesn't use an emergency unlock. A card or the
+    /// recovery password still unlocks straight away while it runs.
+    func startRecoveryWait() {
+        guard lock != nil, store.recoveryWaitEnd == nil else { return }
+        store.recoveryWaitEnd = Date.now.addingTimeInterval(24 * 60 * 60)
+        recoveryWaitEnd = store.recoveryWaitEnd
+    }
+
+    func cancelRecoveryWait() {
+        store.recoveryWaitEnd = nil
+        recoveryWaitEnd = nil
+    }
+
+    /// Unlocks once the 24 hours are up. Runs whenever the app reloads and
+    /// every second on the locked screen. The phone's clock can't be changed
+    /// while locked, so the wait can't be skipped that way.
+    func finishRecoveryWaitIfDue(now: Date = .now) {
+        guard lock != nil, let end = store.recoveryWaitEnd, end <= now else { return }
+        endLock(.wait)
     }
 
     /// Offers to save the recovery code, once per launch, until it's saved.

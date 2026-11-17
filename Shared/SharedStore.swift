@@ -59,6 +59,15 @@ final class SharedStore {
         set { save(newValue, "lockState") }
     }
 
+    /// When the "lost card and password" 24-hour wait ends. Nil when no wait is running.
+    var recoveryWaitEnd: Date? {
+        get { defaults.object(forKey: "recoveryWaitEnd") as? Date }
+        set {
+            if let newValue { defaults.set(newValue, forKey: "recoveryWaitEnd") }
+            else { defaults.removeObject(forKey: "recoveryWaitEnd") }
+        }
+    }
+
     var emergency: EmergencyAllowance {
         get { load("emergency") ?? EmergencyAllowance() }
         set { save(newValue, "emergency") }

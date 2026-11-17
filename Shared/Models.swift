@@ -91,7 +91,7 @@ struct EmergencyAllowance: Codable, Equatable {
 
 /// How unlocking ended a session, kept for stats.
 enum UnlockMethod: String, Codable {
-    case card, emergency, recovery
+    case card, emergency, recovery, wait
 }
 
 /// Time spent locked, per day ("2026-11-16" -> seconds), plus simple counters.
