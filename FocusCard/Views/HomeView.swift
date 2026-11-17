@@ -44,6 +44,14 @@ struct HomeView: View {
             }
         }
         .navigationTitle(model.mode.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { SettingsView() } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Settings")
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Button {
                 Task { await model.scanToToggle() }

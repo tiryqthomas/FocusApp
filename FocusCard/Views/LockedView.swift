@@ -1,10 +1,23 @@
 import SwiftUI
 
-/// Locked: the whole app is black with a timer. Only the card unlocks.
+/// Locked: the whole app is black with a timer. The card unlocks; so do an
+/// emergency unlock (limited each week) or the recovery code.
 struct LockedView: View {
     @Environment(AppModel.self) private var model
+    @State private var showEmergency = false
+    @State private var showRecovery = false
 
     var body: some View {
+        NavigationStack {
+            content
+                .navigationDestination(isPresented: $showEmergency) { EmergencyUnlockView() }
+                .navigationDestination(isPresented: $showRecovery) { RecoveryUnlockView() }
+                .toolbar(.hidden, for: .navigationBar)
+        }
+        .environment(\.colorScheme, .dark)
+    }
+
+    private var content: some View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "lock.fill")
@@ -32,12 +45,18 @@ struct LockedView: View {
             .tint(.white)
             .foregroundStyle(.black)
             .controlSize(.large)
+
+            Button("Emergency unlock (\(model.emergencyLeft) left)") { showEmergency = true }
+                .disabled(model.emergencyLeft == 0)
+                .frame(height: 36)
+            Button("Lost card or scan not working?") { showRecovery = true }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(.white)
         .background(Color.black.ignoresSafeArea())
-        .environment(\.colorScheme, .dark)
     }
 
     /// "1:24:08"

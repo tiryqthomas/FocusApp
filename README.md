@@ -2,7 +2,9 @@
 
 Scan an NFC card to block your chosen apps. Scan the same card again to unblock them. Plain Apple styling.
 
-This branch is the core loop only, for testing. The full version (modes, schedules, emergency unlocks, lost-card recovery, stats, Y2K theme) is on `claude/first-version`, and its files are kept here under `Parked/`, which isn't part of any build target.
+Two ways out without the card: emergency unlocks (5 a week by default, set in Settings, press and hold for 5 seconds then confirm) and a recovery code made in Settings (shown once, only its hash is stored).
+
+This branch is the core loop, for testing. The full version (modes, schedules, stats, Y2K theme) is on `claude/first-version`, and its files are kept here under `Parked/`, which isn't part of any build target.
 
 ## Run it on your iPhone
 
@@ -28,6 +30,8 @@ This branch is the core loop only, for testing. The full version (modes, schedul
 | Scan a different card | Rejected |
 | Settings, Screen Time, turn off Focus Card's access | Unblocks. No code can stop this; it's your safety exit |
 | Write the same text onto another sticker | Unlocks (card is identified by its text, not its chip) |
+| Use emergency unlocks | Works until the week's allowance is used; refills Monday |
+| Raise the allowance | Only possible in Settings, which is closed while locked |
 
 ## Folders
 

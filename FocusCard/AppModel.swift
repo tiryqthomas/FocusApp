@@ -1,3 +1,4 @@
+import CryptoKit
 import FamilyControls
 import Foundation
 import Observation
@@ -14,6 +15,9 @@ final class AppModel {
     var lock: LockState?
     var isAuthorized = false
     var alertMessage: String?
+    var emergencyAllowance = 5
+    var emergencyUsedThisWeek = 0
+    var hasRecoveryCode = false
 
     init() { reload() }
 
@@ -22,6 +26,56 @@ final class AppModel {
         card = store.card
         lock = store.lock
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
+        emergencyAllowance = store.emergencyAllowance
+        let weekStart = Calendar.startOfFocusWeek()
+        emergencyUsedThisWeek = store.emergencyUses.filter { $0 >= weekStart }.count
+        hasRecoveryCode = store.recoveryCodeHash != nil
+    }
+
+    // MARK: Emergency unlocks
+
+    var emergencyLeft: Int { max(0, emergencyAllowance - emergencyUsedThisWeek) }
+
+    func emergencyUnlock() {
+        guard lock != nil, emergencyLeft > 0 else { return }
+        store.emergencyUses = store.emergencyUses + [.now]
+        FocusEngine.unlock(store: store)
+        reload()
+    }
+
+    /// Only reachable from Settings, which is only open while unlocked.
+    func setEmergencyAllowance(_ value: Int) {
+        guard lock == nil else { return }
+        store.emergencyAllowance = value
+        reload()
+    }
+
+    // MARK: Recovery code (card lost, or the scan won't work)
+
+    /// Makes a new code like FC-7K4M-92QX, replacing any old one, and returns it.
+    /// Only the hash is kept, so this is the only time the code can be seen.
+    func makeRecoveryCode() -> String? {
+        guard lock == nil else { return nil }
+        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        func chunk() -> String { String((0..<4).map { _ in alphabet.randomElement()! }) }
+        let code = "FC-\(chunk())-\(chunk())"
+        store.recoveryCodeHash = Self.hash(code)
+        reload()
+        return code
+    }
+
+    /// Returns false when the code is wrong. Doesn't use an emergency unlock.
+    func unlockWithRecoveryCode(_ input: String) -> Bool {
+        guard lock != nil, let saved = store.recoveryCodeHash, Self.hash(input) == saved else { return false }
+        FocusEngine.unlock(store: store)
+        reload()
+        return true
+    }
+
+    /// Ignores case, spaces and dashes.
+    private static func hash(_ code: String) -> String {
+        let normal = code.uppercased().filter { $0.isLetter || $0.isNumber }
+        return SHA256.hash(data: Data(normal.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     func requestAuthorization() async {
