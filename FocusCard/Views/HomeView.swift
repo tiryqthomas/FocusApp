@@ -57,6 +57,11 @@ struct HomeView: View {
             .padding()
         }
         .familyActivityPicker(isPresented: $picking, selection: $selection)
+        // Save whenever the picked list changes, and again when the picker closes,
+        // so the new list is never lost to the order these two updates arrive in.
+        .onChange(of: selection) { _, newValue in
+            model.saveSelection(newValue)
+        }
         .onChange(of: picking) { _, isOpen in
             if !isOpen { model.saveSelection(selection) }
         }
