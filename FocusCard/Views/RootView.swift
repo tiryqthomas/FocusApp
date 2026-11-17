@@ -2,14 +2,11 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    /// "system" follows the iPhone's light or dark setting. Settings can force one.
-    @AppStorage("appearance") private var appearance = "system"
 
     var body: some View {
+        @Bindable var model = model
         Group {
-            if !model.onboarded {
-                OnboardingView()
-            } else if model.lock != nil {
+            if model.lock != nil {
                 LockedView()
                     .transition(.opacity)
             } else {
@@ -17,10 +14,13 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.5), value: model.lock)
-        .haptic(.success, trigger: model.lock)
-        .preferredColorScheme(preferredScheme)
-        .tint(Theme.blue)
+        .animation(.easeInOut(duration: 0.4), value: model.lock)
+        .sensoryFeedback(.success, trigger: model.lock)
+        .preferredColorScheme(colorScheme)
+        .task { model.offerRecoverySaveIfNeeded() }
+        .sheet(isPresented: $model.showSaveRecovery) {
+            SaveRecoveryView()
+        }
         .alert("Focus Card", isPresented: alertShown) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -28,11 +28,11 @@ struct RootView: View {
         }
     }
 
-    private var preferredScheme: ColorScheme? {
-        switch appearance {
-        case "light": return .light
-        case "dark": return .dark
-        default: return nil
+    private var colorScheme: ColorScheme? {
+        switch model.appearance {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 

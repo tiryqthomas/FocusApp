@@ -1,7 +1,7 @@
 import Foundation
 
-/// Reads and writes app state in the App Group, so the app and its
-/// extensions (shield and schedule monitor) see the same data.
+/// Reads and writes app state in the App Group, so the app and the shield
+/// extension see the same data.
 final class SharedStore {
     static let appGroupID = Bundle.main.object(forInfoDictionaryKey: "AppGroupID") as? String ?? ""
 
@@ -24,44 +24,42 @@ final class SharedStore {
         }
     }
 
+    /// All modes. The first launch after the update carries the old single
+    /// Work mode over, and adds Sleep.
     var modes: [FocusMode] {
-        get { load("modes") ?? [] }
+        get {
+            if let modes: [FocusMode] = load("modes"), !modes.isEmpty { return modes }
+            let work: FocusMode = load("workMode") ?? FocusMode()
+            let initial = [work, FocusMode(name: "Sleep", symbol: "moon.fill")]
+            save(initial, "modes") // so ids stay the same from here on
+            return initial
+        }
         set { save(newValue, "modes") }
     }
 
-    var cards: [PairedCard] {
-        get { load("cards") ?? [] }
-        set { save(newValue, "cards") }
+    var selectedModeID: UUID? {
+        get { load("selectedModeID") }
+        set { save(newValue, "selectedModeID") }
     }
 
-    var sessions: [FocusSession] {
-        get { load("sessions") ?? [] }
-        set { save(newValue, "sessions") }
+    /// Name of the locked mode, for the shield. Kept as plain text so the shield
+    /// extension reads it quickly.
+    var lockedModeName: String? {
+        get { defaults.string(forKey: "lockedModeName") }
+        set { defaults.set(newValue, forKey: "lockedModeName") }
+    }
+
+    var card: PairedCard? {
+        get { load("card") }
+        set { save(newValue, "card") }
     }
 
     var lock: LockState? {
-        get { load("lock") }
-        set { save(newValue, "lock") }
+        get { load("lockState") }
+        set { save(newValue, "lockState") }
     }
 
-    /// Decision 5: 5 a week by default, editable in Settings.
-    var emergencyAllowance: Int {
-        get { defaults.object(forKey: "emergencyAllowance") as? Int ?? 5 }
-        set { defaults.set(newValue, forKey: "emergencyAllowance") }
-    }
-
-    var onboarded: Bool {
-        get { defaults.bool(forKey: "onboarded") }
-        set { defaults.set(newValue, forKey: "onboarded") }
-    }
-
-    /// "I lost my card" code, made at setup. Using it never costs an emergency unlock.
-    var recoveryCode: String? {
-        get { defaults.string(forKey: "recoveryCode") }
-        set { defaults.set(newValue, forKey: "recoveryCode") }
-    }
-
-    /// When the 24-hour recovery wait ends. Nil when no wait is running.
+    /// When the "lost card and password" 24-hour wait ends. Nil when no wait is running.
     var recoveryWaitEnd: Date? {
         get { defaults.object(forKey: "recoveryWaitEnd") as? Date }
         set {
@@ -70,17 +68,38 @@ final class SharedStore {
         }
     }
 
-    var didCreateDefaultModes: Bool {
-        get { defaults.bool(forKey: "didCreateDefaultModes") }
-        set { defaults.set(newValue, forKey: "didCreateDefaultModes") }
+    var emergency: EmergencyAllowance {
+        get { load("emergency") ?? EmergencyAllowance() }
+        set { save(newValue, "emergency") }
     }
-}
 
-extension Calendar {
-    /// Decision 10: emergency unlocks refill every Monday.
-    static func startOfFocusWeek(for date: Date = .now) -> Date {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    /// Made once, on first launch. Unlocks without the card.
+    var recoveryCode: String {
+        if let code: String = load("recoveryCode") { return code }
+        let code = Self.makeRecoveryCode()
+        save(code, "recoveryCode")
+        return code
+    }
+
+    var recoveryCodeSaved: Bool {
+        get { load("recoveryCodeSaved") ?? false }
+        set { save(newValue, "recoveryCodeSaved") }
+    }
+
+    var focusLog: FocusLog {
+        get { load("focusLog") ?? FocusLog() }
+        set { save(newValue, "focusLog") }
+    }
+
+    var appearance: Appearance {
+        get { load("appearance") ?? .system }
+        set { save(newValue, "appearance") }
+    }
+
+    /// "FC-7K2M-9QXD". Leaves out 0, O, 1 and I so it's easy to read back.
+    static func makeRecoveryCode() -> String {
+        let letters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        func group() -> String { String((0..<4).map { _ in letters.randomElement()! }) }
+        return "FC-\(group())-\(group())"
     }
 }

@@ -2,7 +2,7 @@ import ManagedSettings
 import ManagedSettingsUI
 import UIKit
 
-/// The black screen shown when a blocked app is opened (canvas screen 5).
+/// The screen shown when a blocked app is opened.
 /// Apple draws this screen; we can only set its icon, text and colors.
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration {
@@ -21,16 +21,19 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         make(name: webDomain.domain)
     }
 
+    /// The same screen for every blocked app, website and category, in system
+    /// colours so it follows light and dark mode. Kept quick: if this takes too
+    /// long iOS shows its own grey "Restricted" screen instead.
     private func make(name: String?) -> ShieldConfiguration {
-        let modeName = SharedStore().lock?.modeName ?? "Focus"
-        let glow = UIColor(red: 0x9E / 255, green: 0xC1 / 255, blue: 0xFF / 255, alpha: 1)
+        let modeName = SharedStore().lockedModeName ?? "Focus"
         return ShieldConfiguration(
-            backgroundColor: .black,
-            icon: UIImage(systemName: "lock.fill")?.withTintColor(glow, renderingMode: .alwaysOriginal),
-            title: ShieldConfiguration.Label(text: "\(name ?? "This app") is locked", color: glow),
-            subtitle: ShieldConfiguration.Label(text: "\(modeName) is on. Tap your card in Focus Card to unlock.", color: glow.withAlphaComponent(0.8)),
-            primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: .black),
-            primaryButtonBackgroundColor: glow
+            backgroundBlurStyle: .systemThickMaterial,
+            backgroundColor: .systemBackground,
+            icon: UIImage(systemName: "lock.fill")?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal),
+            title: ShieldConfiguration.Label(text: "\(name ?? "This app") is locked", color: .label),
+            subtitle: ShieldConfiguration.Label(text: "\(modeName) is on. Open Focus Card and tap your card to unlock.", color: .secondaryLabel),
+            primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: .white),
+            primaryButtonBackgroundColor: .systemBlue
         )
     }
 }

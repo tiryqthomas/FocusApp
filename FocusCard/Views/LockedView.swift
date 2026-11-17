@@ -1,86 +1,104 @@
 import SwiftUI
 
-/// Canvas screen 4: the whole app turns black while locked (Decision 9).
-/// It powers on like an old LCD, with a timer, an emergency unlock, and a way
-/// back in if the card is lost.
+/// Locked: only the lock, a count-up timer, and the ways out.
 struct LockedView: View {
     @Environment(AppModel.self) private var model
-    @State private var showEmergency = false
-    @State private var showLost = false
-    @State private var powered = false
+    @State private var confirmEmergency = false
+    @State private var showRecovery = false
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 14) {
+        VStack(spacing: 0) {
+            if let lock = model.lock {
+                Label(lock.modeName.uppercased(), systemImage: "lock.fill")
+                    .font(.footnote.weight(.semibold))
+                    .tracking(0.6)
+                    .labelStyle(TintedIconLabelStyle())
+                    .padding(.horizontal, 14)
+                    .frame(height: 32)
+                    .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                    .padding(.top, 24)
+
                 Spacer()
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 64))
-                if let lock = model.lock {
-                    Text("\(lock.modeName.uppercased()) IS LOCKED")
-                        .font(Theme.lcdFont(22))
-                        .tracking(2)
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(Self.elapsed(from: lock.since, to: context.date))
-                            .font(Theme.lcdFont(64))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                            .shadow(color: Theme.glow.opacity(0.55), radius: 12)
+
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let elapsed = max(0, context.date.timeIntervalSince(lock.since))
+                    ZStack {
+                        Circle()
+                            .stroke(Color(.systemFill), lineWidth: 5)
+                        // Fills once an hour, then starts again.
+                        Circle()
+                            .trim(from: 0, to: elapsed.truncatingRemainder(dividingBy: 3600) / 3600)
+                            .stroke(.green, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        VStack(spacing: 8) {
+                            Text(Self.elapsed(elapsed))
+                                .font(.system(size: 68, weight: .thin))
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                            Text("Focused")
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .frame(width: 280, height: 280)
                 }
-                if let mode = model.lockedMode {
-                    Text("\(mode.selectionSummary.uppercased()) BLOCKED")
-                        .font(Theme.lcdFont(16))
-                        .opacity(0.8)
+
+                Spacer()
+            }
+
+            VStack(spacing: HomeView.spacing) {
+                Button {
+                    Task { await model.scanToToggle() }
+                } label: {
+                    Label("Tap Card to Unlock", systemImage: "wave.3.right")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
                 }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+
+                EmergencyHoldButton(remaining: model.emergency.remaining) {
+                    confirmEmergency = true
+                }
+
                 if let end = model.recoveryWaitEnd {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text("RECOVERY WAIT: \(Self.countdown(to: end, now: context.date))")
-                            .font(Theme.lcdFont(16))
-                            .opacity(0.9)
+                        HStack {
+                            Label("Unlocks in \(Self.countdown(to: end, now: context.date))", systemImage: "hourglass")
+                                .monospacedDigit()
+                            Spacer()
+                            Button("Cancel Wait") { model.cancelRecoveryWait() }
+                                .fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 20)
+                        .frame(height: 54)
+                        .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                        .accessibilityElement(children: .combine)
                     }
                 }
-                Spacer()
-                VStack(spacing: 10) {
-                    Button {
-                        Task { await model.unlockWithCard() }
-                    } label: {
-                        Text("UNLOCK WITH CARD")
-                    }
-                    .buttonStyle(GlowButtonStyle())
 
-                    Button {
-                        showEmergency = true
-                    } label: {
-                        Text("EMERGENCY UNLOCK · \(model.emergencyLeft) LEFT THIS WEEK")
-                    }
-                    .buttonStyle(GlowButtonStyle(filled: false))
-                    .disabled(model.emergencyLeft == 0)
-
-                    Button("I LOST MY CARD") { showLost = true }
-                        .font(Theme.lcdFont(17))
-                        .underline()
-                        .frame(height: 36)
-                }
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity)
-            // Power-on: the screen opens from a bright line.
-            .scaleEffect(x: powered ? 1 : 0.6, y: powered ? 1 : 0.02)
-            .brightness(powered ? 0 : 1)
-            .blackScreen()
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: $showEmergency) {
-                EmergencyUnlockView()
-            }
-            .navigationDestination(isPresented: $showLost) {
-                LostCardView()
+                Button("Lost your card?") { showRecovery = true }
+                    .font(.subheadline.weight(.medium))
+                    .frame(minHeight: 44)
             }
         }
-        .environment(\.colorScheme, .dark)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.55)) { powered = true }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .alert("Use an emergency unlock?", isPresented: $confirmEmergency) {
+            Button("Unlock", role: .destructive) { model.emergencyUnlock() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            let left = max(0, model.emergency.remaining - 1)
+            Text("\(model.lock?.modeName ?? "Work") unlocks now. You will have \(left) of \(model.emergency.perWeek) left this week. They reset on Monday.")
         }
-        // A 24-hour recovery wait unlocks by itself when it runs out.
+        .sheet(isPresented: $showRecovery) {
+            RecoveryUnlockView()
+                .presentationDetents([.large])
+        }
+        // The 24-hour wait unlocks by itself when it runs out.
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
@@ -89,15 +107,149 @@ struct LockedView: View {
         }
     }
 
-    /// "1:24:08"
-    static func elapsed(from start: Date, to now: Date) -> String {
-        let total = max(0, Int(now.timeIntervalSince(start)))
-        return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
-    }
-
     /// "23:59:58"
     static func countdown(to end: Date, now: Date) -> String {
         let total = max(0, Int(end.timeIntervalSince(now).rounded(.up)))
         return String(format: "%02d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+    }
+
+    /// "1:24:08", or "4:08" under an hour.
+    static func elapsed(_ seconds: Double) -> String {
+        let total = Int(seconds)
+        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
+}
+
+/// Green lock icon beside the mode name.
+private struct TintedIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon.foregroundStyle(.green)
+            configuration.title
+        }
+    }
+}
+
+/// Press and hold for 5 seconds. A red fill shows progress; letting go early cancels.
+struct EmergencyHoldButton: View {
+    let remaining: Int
+    let onComplete: () -> Void
+    @State private var pressing = false
+
+    var body: some View {
+        Text(remaining > 0 ? "Hold for Emergency Unlock · \(remaining) left" : "No emergency unlocks left until Monday")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(remaining > 0 ? Color.red : Color.secondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(alignment: .leading) {
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(.red.opacity(0.2))
+                        .frame(width: pressing ? proxy.size.width : 0)
+                        .animation(pressing ? .linear(duration: 5) : .easeOut(duration: 0.2), value: pressing)
+                }
+            }
+            .background(Color(.tertiarySystemFill))
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+            .onLongPressGesture(minimumDuration: 5, maximumDistance: 40) {
+                pressing = false
+                onComplete()
+            } onPressingChanged: { isPressing in
+                pressing = isPressing && remaining > 0
+            }
+            .disabled(remaining == 0)
+            .sensoryFeedback(.warning, trigger: pressing) { _, new in new }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(remaining > 0 ? "Emergency unlock, \(remaining) left. Press and hold for 5 seconds." : "No emergency unlocks left until Monday")
+            .accessibilityAction { if remaining > 0 { onComplete() } }
+    }
+}
+
+/// Unlocks with the recovery password. Doesn't use an emergency unlock.
+struct RecoveryUnlockView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var entered = ""
+    @State private var wrong = false
+    @State private var attempts = 0
+
+    var body: some View {
+        VStack(spacing: HomeView.spacing) {
+            Text("Recovery Password").font(.title3.weight(.semibold))
+            Text("Use this if your card is lost or will not scan. It does not use an emergency unlock.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            // .password lets iOS offer the code saved in Passwords.
+            TextField("FC-XXXX-XXXX", text: $entered)
+                .textContentType(.password)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .font(.body.monospaced())
+                .multilineTextAlignment(.center)
+                .frame(height: 54)
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 14))
+                .modifier(Shake(amount: CGFloat(attempts)))
+                .onSubmit(tryUnlock)
+            Text(wrong ? "Incorrect password" : " ")
+                .font(.footnote)
+                .foregroundStyle(.red)
+            Button(action: tryUnlock) {
+                Text("Unlock").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            Divider().padding(.vertical, 4)
+
+            if model.recoveryWaitEnd == nil {
+                Text("Don't know the password? Start a 24-hour wait. Your apps unlock when it ends, and it doesn't use an emergency unlock.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    model.startRecoveryWait()
+                    dismiss()
+                } label: {
+                    Text("Start 24-Hour Wait").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+            } else {
+                Text("A 24-hour wait is running. Your card or password still unlocks right away.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button("Cancel") { dismiss() }
+                .frame(minHeight: 44)
+        }
+        .padding(24)
+        .sensoryFeedback(.error, trigger: attempts)
+    }
+
+    private func tryUnlock() {
+        if model.unlockWithRecovery(entered) {
+            dismiss()
+        } else {
+            wrong = true
+            withAnimation(.default) { attempts += 1 }
+        }
+    }
+}
+
+/// Side-to-side shake for a wrong entry.
+struct Shake: GeometryEffect {
+    var amount: CGFloat
+    var animatableData: CGFloat {
+        get { amount }
+        set { amount = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX: 8 * sin(amount * .pi * 4), y: 0))
     }
 }

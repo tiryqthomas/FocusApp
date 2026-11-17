@@ -1,149 +1,204 @@
-import DeviceActivity
-import FamilyControls
-import ManagedSettings
+import Charts
 import SwiftUI
 
-extension DeviceActivityReport.Context {
-    static let summary = Self("summary")
-    static let statsDay = Self("statsDay")
-    static let statsWeek = Self("statsWeek")
-    static let statsMonth = Self("statsMonth")
-}
-
-/// Decision 13: Day, Week and Month, starting on Week.
-/// Ranges must match `Period` in the report extension.
-enum StatsRange: String, CaseIterable, Identifiable {
-    case day = "Day"
-    case week = "Week"
-    case month = "Month"
-
-    var id: String { rawValue }
-
-    var days: Int {
-        switch self {
-        case .day: 1
-        case .week: 7
-        case .month: 28
-        }
-    }
-
-    var context: DeviceActivityReport.Context {
-        switch self {
-        case .day: .statsDay
-        case .week: .statsWeek
-        case .month: .statsMonth
-        }
-    }
-
-    /// `categories` limits the report to the chosen categories. Empty means all.
-    func filter(categories: Set<ActivityCategoryToken> = []) -> DeviceActivityFilter {
-        let calendar = Calendar.current
-        let now = Date.now
-        let today = calendar.startOfDay(for: now)
-        func since(daysBack: Int) -> DateInterval {
-            DateInterval(start: calendar.date(byAdding: .day, value: -daysBack, to: today) ?? today, end: now)
-        }
-        switch self {
-        case .day:
-            return DeviceActivityFilter(segment: .hourly(during: since(daysBack: 1)), users: .all, devices: .init([.iPhone]), categories: categories)
-        case .week:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 27)), users: .all, devices: .init([.iPhone]), categories: categories)
-        case .month:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 55)), users: .all, devices: .init([.iPhone]), categories: categories)
-        }
-    }
-}
-
-/// Canvas screen 6.
+/// Full stats, opened from the chart on Home.
 struct StatsView: View {
     @Environment(AppModel.self) private var model
-    @State private var range: StatsRange = .week
-    @State private var categorySelection = FamilyActivitySelection()
-    @State private var choosingCategories = false
+    @State private var range: StatsRange
+    @State private var category: SampleStats.Category?
+
+    init(initialRange: StatsRange) {
+        _range = State(initialValue: initialRange)
+    }
+
+    private var lineColor: Color { category?.color ?? .blue }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                LCDSegment(options: StatsRange.allCases, title: { $0.rawValue }, selection: $range)
+            VStack(alignment: .leading, spacing: 14) {
+                Picker("Range", selection: $range.animation(.snappy)) {
+                    ForEach(StatsRange.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
 
-                categoryRow
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(((category.map { $0.name + " · " } ?? "") + (range == .day ? "Today" : "Daily average")).uppercased())
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(SampleStats.format(minutes: SampleStats.headline(range, category: category)))
+                        .font(.largeTitle.bold())
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text(SampleStats.change(range))
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.blue)
+                }
 
-                DeviceActivityReport(range.context, filter: range.filter(categories: categorySelection.categoryTokens))
-                    .frame(minHeight: 720)
+                categoryChips
 
-                focusCardStats
+                card("Trend") { trend }
+                card("When you use your phone") { heatmap }
+                card("Top apps") { topApps }
+                card("Focus Card") { focusStats }
+
+                Text("Screen time figures are samples until the Screen Time report is connected.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(20)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .lcdScreen()
-        .lcdNavigationBar()
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Stats")
         .navigationBarTitleDisplayMode(.inline)
-        .familyActivityPicker(isPresented: $choosingCategories, selection: $categorySelection)
     }
 
-    /// Category filter, in the same glass style as the rest of the screen (canvas screen 6).
-    private var categoryRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Categories")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Text(categorySelection.categoryTokens.isEmpty
-                     ? "All categories"
-                     : "\(categorySelection.categoryTokens.count) selected")
-                    .font(.headline)
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", color: .blue, selected: category == nil) { category = nil }
+                ForEach(SampleStats.Category.allCases) { c in
+                    chip(c.name, color: c.color, selected: category == c) { category = c }
+                }
             }
-            Spacer()
-            Button("Choose") { choosingCategories = true }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Theme.titleGradient)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+    }
+
+    private func chip(_ title: String, color: Color, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.snappy) { action() }
+        } label: {
+            HStack(spacing: 6) {
+                Circle().fill(color).frame(width: 8, height: 8)
+                Text(title)
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
+            .background(selected ? Color.primary : Color(.tertiarySystemFill), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content()
         }
         .padding(16)
-        .frame(maxWidth: .infinity)
-        .lcdPanel()
-    }
-
-    private var focusCardStats: some View {
-        let stats = model.focusStats(days: range.days)
-        let change = stats.timeLocked - stats.previousTimeLocked
-        return VStack(alignment: .leading, spacing: 0) {
-            Text("Focus Card")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.top, 14)
-                .padding(.bottom, 4)
-            row("Time locked", value: Self.duration(stats.timeLocked),
-                note: stats.previousTimeLocked > 0 ? "\(change < 0 ? "↓" : "↑") \(Self.duration(abs(change)))" : nil)
-            Divider()
-            row("Streak", value: stats.streakDays == 1 ? "1 day" : "\(stats.streakDays) days", note: nil)
-            Divider()
-            row("Emergency unlocks used",
-                value: range == .week ? "\(model.emergencyUsedThisWeek) of \(model.emergencyAllowance)" : "\(stats.emergencyUsed)",
-                note: nil)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .lcdPanel()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    private func row(_ name: String, value: String, note: String?) -> some View {
-        HStack {
-            Text(name)
-            Spacer()
-            Text(value).fontWeight(.semibold)
-            if let note { Text(note).foregroundStyle(.secondary) }
+    private var trend: some View {
+        let points = SampleStats.totals(range, category: category)
+        return Chart {
+            ForEach(points, id: \.label) { point in
+                AreaMark(x: .value("Time", point.label), y: .value("Minutes", point.minutes))
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(lineColor.opacity(0.12))
+                LineMark(x: .value("Time", point.label), y: .value("Minutes", point.minutes))
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(lineColor)
+                    .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round))
+            }
+            if let last = points.last {
+                PointMark(x: .value("Time", last.label), y: .value("Minutes", last.minutes))
+                    .foregroundStyle(lineColor)
+            }
         }
-        .padding(.vertical, 12)
+        .chartYAxis(.hidden)
+        .chartXAxis {
+            AxisMarks(values: SampleStats.axisLabels(range)) { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        Text(SampleStats.axisText(label, range))
+                    }
+                }
+            }
+        }
+        .frame(height: 150)
     }
 
-    static func duration(_ seconds: TimeInterval) -> String {
-        let minutes = Int((seconds / 60).rounded())
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+    /// 7 days by 8 three-hour blocks; darker means more use.
+    private var heatmap: some View {
+        let days = ["M", "T", "W", "T", "F", "S", "S"]
+        let times = ["12a", "3a", "6a", "9a", "12p", "3p", "6p", "9p"]
+        return Grid(horizontalSpacing: 4, verticalSpacing: 4) {
+            ForEach(0..<7, id: \.self) { d in
+                GridRow {
+                    Text(days[d])
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 14, alignment: .leading)
+                    ForEach(0..<8, id: \.self) { b in
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(lineColor.opacity(0.08 + SampleStats.heatmap[d][b] * 0.92))
+                            .frame(height: 16)
+                    }
+                }
+            }
+            GridRow {
+                Color.clear.frame(width: 14, height: 1)
+                ForEach(times, id: \.self) { t in
+                    Text(t).font(.system(size: 9)).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var topApps: some View {
+        let apps = SampleStats.apps.filter { category == nil || $0.category == category }
+        let top = SampleStats.apps.map(\.minutes).max() ?? 1
+        return VStack(spacing: 0) {
+            if apps.isEmpty {
+                Text("No apps in this category").foregroundStyle(.secondary)
+            }
+            ForEach(Array(apps.prefix(5).enumerated()), id: \.element.id) { index, app in
+                if index > 0 { Divider() }
+                VStack(spacing: 6) {
+                    HStack {
+                        Text(app.name)
+                        Spacer()
+                        Text(SampleStats.format(minutes: app.minutes))
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                    }
+                    .font(.subheadline)
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color(.tertiarySystemFill))
+                            Capsule().fill(app.category.color)
+                                .frame(width: proxy.size.width * app.minutes / top)
+                        }
+                    }
+                    .frame(height: 4)
+                }
+                .padding(.vertical, 9)
+            }
+        }
+    }
+
+    /// Real figures from the app's own lock history.
+    private var focusStats: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            VStack(spacing: 0) {
+                DetailRow(label: "Locked this week") { Text(formatDuration(model.focusedThisWeek(now: context.date))) }
+                Divider()
+                DetailRow(label: "Longest session") { Text(formatDuration(model.focusLog.longestSession)) }
+                Divider()
+                DetailRow(label: "Streak") {
+                    let days = model.focusLog.streak(now: context.date)
+                    Text(days == 1 ? "1 day" : "\(days) days")
+                }
+                Divider()
+                DetailRow(label: "Card unlocks") { Text("\(model.focusLog.cardUnlocks)") }
+                Divider()
+                DetailRow(label: "Emergency unlocks used") { Text("\(model.emergency.used) of \(model.emergency.perWeek)") }
+            }
+        }
     }
 }

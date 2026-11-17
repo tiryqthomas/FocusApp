@@ -9,8 +9,12 @@ struct FocusCardApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                // Tapping the card while no scan is running: iOS reads its focuscard:// link,
+                // shows a notification, and opening it lands here.
+                .onOpenURL { url in
+                    Task { await model.handleCardLink(url) }
+                }
                 .onChange(of: scenePhase) { _, phase in
-                    // A scheduled mode may have locked while the app was closed.
                     if phase == .active { model.reload() }
                 }
         }

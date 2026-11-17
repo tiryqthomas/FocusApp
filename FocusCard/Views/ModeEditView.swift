@@ -1,31 +1,49 @@
 import FamilyControls
 import SwiftUI
 
-/// Canvas screen 2: edit a mode.
+/// Make a new Focus mode, or change one's name, icon and blocked apps.
 struct ModeEditView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var mode: FocusMode
     @State private var picking = false
-    @State private var confirmDelete = false
-    @State private var confirmLeave = false
-    private let original: FocusMode
+    private let isNew: Bool
 
     init(mode: FocusMode) {
         _mode = State(initialValue: mode)
-        original = mode
+        isNew = mode.name.isEmpty
     }
 
-    private var isNew: Bool { !model.modes.contains { $0.id == mode.id } }
-    private var hasChanges: Bool { mode != original }
     private var canSave: Bool { !mode.name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Name") {
-                    TextField("Name", text: $mode.name)
+                    TextField("Reading, Gym, Family…", text: $mode.name)
                 }
+
+                Section("Icon") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 6), spacing: 12) {
+                        ForEach(FocusMode.symbols, id: \.self) { symbol in
+                            let chosen = symbol == mode.symbol
+                            Button {
+                                mode.symbol = symbol
+                            } label: {
+                                Image(systemName: symbol)
+                                    .font(.title3)
+                                    .foregroundStyle(chosen ? Color.accentColor : Color.primary)
+                                    .frame(width: 44, height: 44)
+                                    .background(chosen ? Color.accentColor.opacity(0.18) : Color(.tertiarySystemFill), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(symbol.replacingOccurrences(of: ".fill", with: "").replacingOccurrences(of: ".", with: " "))
+                            .accessibilityAddTraits(chosen ? [.isSelected] : [])
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section {
                     Button {
                         picking = true
@@ -33,71 +51,27 @@ struct ModeEditView: View {
                         LabeledContent("Blocked apps", value: mode.selectionSummary)
                     }
                     .foregroundStyle(.primary)
-                    Toggle("Start on schedule", isOn: $mode.scheduleEnabled.animation())
-                    if mode.scheduleEnabled {
-                        DatePicker("Starts", selection: startTime, displayedComponents: .hourAndMinute)
-                        LabeledContent("Days", value: "Every day")
-                    }
+                    .disabled(!model.isAuthorized)
                 } footer: {
-                    if mode.scheduleEnabled {
-                        Text("A scheduled mode still needs a card to unlock.")
-                    }
-                }
-                if !isNew {
-                    Section {
-                        Button("Delete mode", role: .destructive) { confirmDelete = true }
-                    }
+                    if !model.isAuthorized { Text("Allow Screen Time on the home screen first.") }
                 }
             }
-            .lcdForm()
-            .navigationTitle(isNew ? "New mode" : original.name)
+            .navigationTitle(isNew ? "New Focus" : "Edit Focus")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        if hasChanges { confirmLeave = true } else { dismiss() }
-                    }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
+                    Button(isNew ? "Add" : "Save") {
+                        mode.name = mode.name.trimmingCharacters(in: .whitespaces)
+                        model.saveMode(mode)
+                        dismiss()
+                    }
+                    .disabled(!canSave)
                 }
             }
             .familyActivityPicker(isPresented: $picking, selection: $mode.selection)
-            .interactiveDismissDisabled(hasChanges)
-            .confirmationDialog("Delete \(original.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete", role: .destructive) {
-                    model.deleteMode(original)
-                    dismiss()
-                }
-            }
-            // Leaving part-way: Stay, Save or Discard, so nothing is lost by accident.
-            .confirmationDialog("Save your changes?", isPresented: $confirmLeave, titleVisibility: .visible) {
-                if canSave {
-                    Button("Save") { save() }
-                }
-                Button("Discard", role: .destructive) { dismiss() }
-                Button("Stay", role: .cancel) {}
-            }
         }
-    }
-
-    private func save() {
-        mode.name = mode.name.trimmingCharacters(in: .whitespaces)
-        model.saveMode(mode)
-        dismiss()
-    }
-
-    private var startTime: Binding<Date> {
-        Binding(
-            get: {
-                Calendar.current.date(from: DateComponents(hour: mode.startHour, minute: mode.startMinute)) ?? .now
-            },
-            set: { date in
-                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-                mode.startHour = parts.hour ?? 23
-                mode.startMinute = parts.minute ?? 0
-            }
-        )
     }
 }

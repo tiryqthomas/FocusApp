@@ -1,15 +1,29 @@
 import Foundation
 import FamilyControls
 
-/// A named set of apps to block, such as Work or Sleep. (Decision 2)
-struct FocusMode: Identifiable, Codable, Equatable {
+/// A named set of apps to block, such as Work or Sleep.
+struct FocusMode: Codable, Equatable, Identifiable {
     var id = UUID()
-    var name: String
+    var name = "Work"
+    /// SF Symbol shown on the mode's pill.
+    var symbol = "briefcase.fill"
     var selection = FamilyActivitySelection()
-    /// Decision 6: a mode can also start on a schedule. A card is always needed to unlock.
-    var scheduleEnabled = false
-    var startHour = 23
-    var startMinute = 0
+
+    init(id: UUID = UUID(), name: String = "Work", symbol: String = "briefcase.fill", selection: FamilyActivitySelection = FamilyActivitySelection()) {
+        self.id = id
+        self.name = name
+        self.symbol = symbol
+        self.selection = selection
+    }
+
+    // Reads modes saved by older versions, which had no id or symbol.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Work"
+        symbol = try c.decodeIfPresent(String.self, forKey: .symbol) ?? "briefcase.fill"
+        selection = try c.decodeIfPresent(FamilyActivitySelection.self, forKey: .selection) ?? FamilyActivitySelection()
+    }
 
     var isEmpty: Bool {
         selection.applicationTokens.isEmpty
@@ -29,44 +43,110 @@ struct FocusMode: Identifiable, Codable, Equatable {
         return parts.isEmpty ? "No apps chosen" : parts.joined(separator: ", ")
     }
 
-    var startTimeText: String {
-        var components = DateComponents()
-        components.hour = startHour
-        components.minute = startMinute
-        let date = Calendar.current.date(from: components) ?? .now
-        return date.formatted(date: .omitted, time: .shortened)
-    }
-
-    /// "8 apps · 11:00 PM"
-    var detail: String {
-        scheduleEnabled ? "\(selectionSummary) · \(startTimeText)" : selectionSummary
-    }
+    /// Icons offered when making or editing a mode.
+    static let symbols = [
+        "briefcase.fill", "moon.fill", "book.fill", "figure.run",
+        "dumbbell.fill", "car.fill", "fork.knife", "person.2.fill",
+        "gamecontroller.fill", "graduationcap.fill", "leaf.fill", "sparkles",
+    ]
 }
 
-/// An NFC card or sticker that can lock and unlock any mode. (Decisions 4 and 8)
-struct PairedCard: Identifiable, Codable, Equatable {
-    var id = UUID()
-    /// The tag's hardware identifier, as hex.
+/// The NFC card or sticker that locks and unlocks.
+struct PairedCard: Codable, Equatable {
+    /// Hex of the card's first NDEF record (what is written on it, not the chip ID).
     var tagID: String
-    var name: String
     var added = Date()
 }
 
-/// The mode that is locked right now.
+/// Present while locked.
 struct LockState: Codable, Equatable {
-    var modeID: UUID
     var modeName: String
     var since: Date
 }
 
-/// One finished lock, kept for Focus Card stats.
-struct FocusSession: Identifiable, Codable, Equatable {
-    var id = UUID()
-    var modeName: String
-    var start: Date
-    var end: Date
-    /// True when it ended with an emergency unlock instead of a card.
-    var emergency: Bool
+/// Emergency unlocks: a weekly allowance that refills every Monday.
+struct EmergencyAllowance: Codable, Equatable {
+    var perWeek = 5
+    var used = 0
+    /// Start of the week `used` counts from.
+    var weekStart = EmergencyAllowance.mondayOfThisWeek()
 
-    var duration: TimeInterval { end.timeIntervalSince(start) }
+    var remaining: Int { max(0, perWeek - used) }
+
+    /// Clears `used` when a new week has started.
+    mutating func refillIfNewWeek(now: Date = .now) {
+        let monday = Self.mondayOfThisWeek(now)
+        if monday > weekStart {
+            weekStart = monday
+            used = 0
+        }
+    }
+
+    static func mondayOfThisWeek(_ date: Date = .now) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    }
+}
+
+/// How unlocking ended a session, kept for stats.
+enum UnlockMethod: String, Codable {
+    case card, emergency, recovery, wait
+}
+
+/// Time spent locked, per day ("2026-11-16" -> seconds), plus simple counters.
+struct FocusLog: Codable, Equatable {
+    var secondsByDay: [String: Double] = [:]
+    var longestSession: Double = 0
+    var cardUnlocks = 0
+
+    static func key(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    /// Adds a finished session, splitting it across midnight if needed.
+    mutating func add(from start: Date, to end: Date) {
+        guard end > start else { return }
+        longestSession = max(longestSession, end.timeIntervalSince(start))
+        let calendar = Calendar.current
+        var cursor = start
+        while cursor < end {
+            let nextMidnight = calendar.startOfDay(for: cursor).addingTimeInterval(86_400)
+            let sliceEnd = min(end, nextMidnight)
+            secondsByDay[Self.key(cursor), default: 0] += sliceEnd.timeIntervalSince(cursor)
+            cursor = sliceEnd
+        }
+    }
+
+    func seconds(on date: Date) -> Double { secondsByDay[Self.key(date)] ?? 0 }
+
+    /// Days in a row, ending today or yesterday, with any locked time.
+    func streak(now: Date = .now) -> Int {
+        let calendar = Calendar.current
+        var day = calendar.startOfDay(for: now)
+        if seconds(on: day) == 0 { day = calendar.date(byAdding: .day, value: -1, to: day) ?? day }
+        var count = 0
+        while seconds(on: day) > 0 {
+            count += 1
+            day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+        }
+        return count
+    }
+}
+
+/// Light, dark, or follow the system.
+enum Appearance: String, CaseIterable, Codable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
 }

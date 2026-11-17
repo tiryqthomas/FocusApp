@@ -2,6 +2,7 @@ import FamilyControls
 import Foundation
 import Observation
 
+/// The core loop: pair a card, choose apps, scan to lock, scan again to unlock.
 @MainActor
 @Observable
 final class AppModel {
@@ -9,207 +10,45 @@ final class AppModel {
     private let scanner = NFCScanner()
 
     var modes: [FocusMode] = []
-    var cards: [PairedCard] = []
-    var sessions: [FocusSession] = []
-    var lock: LockState?
-    var emergencyAllowance = 5
-    var onboarded = false
-    var isAuthorized = false
     var selectedModeID: UUID?
+    var card: PairedCard?
+    var lock: LockState?
+    var isAuthorized = false
     var alertMessage: String?
+    var emergency = EmergencyAllowance()
+    var focusLog = FocusLog()
+    var appearance: Appearance = .system
+    var recoveryCode = ""
+    var recoveryCodeSaved = false
+    /// Shown once per launch until the recovery code is saved.
+    var showSaveRecovery = false
+    /// When the 24-hour wait ends, if one is running.
     var recoveryWaitEnd: Date?
-    var recoveryCode: String?
 
-    init() {
-        if !store.didCreateDefaultModes {
-            store.modes = [FocusMode(name: "Work"), FocusMode(name: "Sleep")]
-            store.didCreateDefaultModes = true
-        }
-        reload()
-    }
+    init() { reload() }
 
     func reload() {
-        finishRecoveryWaitIfDue()
-        recoveryWaitEnd = store.recoveryWaitEnd
-        recoveryCode = store.recoveryCode
         modes = store.modes
-        cards = store.cards
-        sessions = store.sessions
+        selectedModeID = store.selectedModeID.flatMap { id in modes.contains { $0.id == id } ? id : nil } ?? modes.first?.id
+        card = store.card
         lock = store.lock
-        emergencyAllowance = store.emergencyAllowance
-        onboarded = store.onboarded
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
-        if selectedModeID == nil || !modes.contains(where: { $0.id == selectedModeID }) {
-            selectedModeID = modes.first?.id
-        }
-    }
-
-    // MARK: Modes
-
-    var selectedMode: FocusMode? { modes.first { $0.id == selectedModeID } }
-
-    var lockedMode: FocusMode? {
-        guard let lock else { return nil }
-        return modes.first { $0.id == lock.modeID }
-    }
-
-    func saveMode(_ mode: FocusMode) {
-        var all = modes
-        if let index = all.firstIndex(where: { $0.id == mode.id }) {
-            all[index] = mode
-        } else {
-            all.append(mode)
-            selectedModeID = mode.id
-        }
-        store.modes = all
-        FocusSchedule.sync(all)
-        reload()
-    }
-
-    func deleteMode(_ mode: FocusMode) {
-        guard lock?.modeID != mode.id else {
-            alertMessage = "\(mode.name) is locked. Unlock it before deleting it."
-            return
-        }
-        let all = modes.filter { $0.id != mode.id }
-        store.modes = all
-        FocusSchedule.sync(all)
-        reload()
-    }
-
-    // MARK: Screen Time access
-
-    func requestAuthorization() async {
-        do {
-            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
-        } catch {
-            alertMessage = "Screen Time access was not granted. You can allow it in Settings."
-        }
-        isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
-    }
-
-    func completeOnboarding() {
-        store.onboarded = true
-        onboarded = true
-    }
-
-    // MARK: Cards
-
-    @discardableResult
-    func pairCard() async -> Bool {
-        do {
-            let id = try await scanner.scan(
-                prompt: "Hold your card near the top of the iPhone.",
-                success: "Card paired."
-            )
-            if cards.contains(where: { $0.tagID == id }) {
-                alertMessage = "This card is already paired."
-                return false
-            }
-            var all = cards
-            all.append(PairedCard(tagID: id, name: "Card \(all.count + 1)"))
-            store.cards = all
-            reload()
-            return true
-        } catch {
-            handle(error)
-            return false
-        }
-    }
-
-    func removeCards(at offsets: IndexSet) {
-        var all = cards
-        all.remove(atOffsets: offsets)
-        store.cards = all
-        reload()
-    }
-
-    // MARK: Lock and unlock
-
-    func lockSelected() async {
-        guard let mode = selectedMode else { return }
-        guard !mode.isEmpty else {
-            alertMessage = "Choose apps for \(mode.name) first."
-            return
-        }
-        guard !cards.isEmpty else {
-            alertMessage = "Pair a card first."
-            return
-        }
-        let paired = Set(cards.map(\.tagID))
-        do {
-            _ = try await scanner.scan(
-                prompt: "Hold your card near the top of the iPhone to lock \(mode.name).",
-                success: "\(mode.name) is locked.",
-                accept: { paired.contains($0) }
-            )
-            FocusEngine.lock(mode, store: store)
-            reload()
-        } catch {
-            handle(error)
-        }
-    }
-
-    func unlockWithCard() async {
-        guard let lock else { return }
-        let paired = Set(cards.map(\.tagID))
-        do {
-            _ = try await scanner.scan(
-                prompt: "Hold your card near the top of the iPhone to unlock \(lock.modeName).",
-                success: "\(lock.modeName) is unlocked.",
-                accept: { paired.contains($0) }
-            )
-            FocusEngine.unlock(emergency: false, store: store)
-            reload()
-        } catch {
-            handle(error)
-        }
-    }
-
-    // MARK: Emergency unlocks (Decisions 3, 5, 10, 11)
-
-    var emergencyUsedThisWeek: Int {
-        let weekStart = Calendar.startOfFocusWeek()
-        return sessions.filter { $0.emergency && $0.end >= weekStart }.count
-    }
-
-    var emergencyLeft: Int { max(0, emergencyAllowance - emergencyUsedThisWeek) }
-
-    func emergencyUnlock() {
-        guard emergencyLeft > 0 else { return }
-        FocusEngine.unlock(emergency: true, store: store)
-        reload()
-    }
-
-    func setEmergencyAllowance(_ value: Int) {
-        store.emergencyAllowance = value
-        emergencyAllowance = value
-    }
-
-    // MARK: Lost card recovery (neither way uses an emergency unlock)
-
-    /// Makes the recovery code once, like FC-7K4M-92QX.
-    func ensureRecoveryCode() {
-        guard store.recoveryCode == nil else { return }
-        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-        func chunk() -> String { String((0..<4).map { _ in alphabet.randomElement() ?? "X" }) }
-        store.recoveryCode = "FC-\(chunk())-\(chunk())"
+        var allowance = store.emergency
+        allowance.refillIfNewWeek()
+        store.emergency = allowance
+        emergency = allowance
+        focusLog = store.focusLog
+        appearance = store.appearance
         recoveryCode = store.recoveryCode
+        recoveryCodeSaved = store.recoveryCodeSaved
+        recoveryWaitEnd = store.recoveryWaitEnd
+        finishRecoveryWaitIfDue()
     }
 
-    /// Returns false when the code is wrong.
-    @discardableResult
-    func unlockWithRecoveryCode(_ input: String) -> Bool {
-        func normal(_ s: String) -> String {
-            s.uppercased().filter { $0.isLetter || $0.isNumber }
-        }
-        guard lock != nil, let code = store.recoveryCode, normal(input) == normal(code) else { return false }
-        FocusEngine.unlock(emergency: false, store: store)
-        reload()
-        alertMessage = "Unlocked. Pair a replacement card in Cards."
-        return true
-    }
+    // MARK: 24-hour wait (card lost and password unknown)
 
+    /// Starts the wait. Doesn't use an emergency unlock. A card or the
+    /// recovery password still unlocks straight away while it runs.
     func startRecoveryWait() {
         guard lock != nil, store.recoveryWaitEnd == nil else { return }
         store.recoveryWaitEnd = Date.now.addingTimeInterval(24 * 60 * 60)
@@ -221,64 +60,208 @@ final class AppModel {
         recoveryWaitEnd = nil
     }
 
-    /// Unlocks by itself once the 24 hours are up.
-    func finishRecoveryWaitIfDue() {
-        guard store.lock != nil, let end = store.recoveryWaitEnd, end <= .now else { return }
-        FocusEngine.unlock(emergency: false, store: store)
-        lock = store.lock
-        recoveryWaitEnd = nil
-        sessions = store.sessions
+    /// Unlocks once the 24 hours are up. Runs whenever the app reloads and
+    /// every second on the locked screen. The phone's clock can't be changed
+    /// while locked, so the wait can't be skipped that way.
+    func finishRecoveryWaitIfDue(now: Date = .now) {
+        guard lock != nil, let end = store.recoveryWaitEnd, end <= now else { return }
+        endLock(.wait)
     }
 
-    // MARK: Focus Card stats (Decision 14)
-
-    struct FocusStats {
-        var timeLocked: TimeInterval
-        var previousTimeLocked: TimeInterval
-        var emergencyUsed: Int
-        var streakDays: Int
+    /// Offers to save the recovery code, once per launch, until it's saved.
+    func offerRecoverySaveIfNeeded() {
+        if !recoveryCodeSaved && lock == nil { showSaveRecovery = true }
     }
 
-    func focusStats(days: Int) -> FocusStats {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        let currentStart = calendar.date(byAdding: .day, value: -(days - 1), to: today) ?? today
-        let previousStart = calendar.date(byAdding: .day, value: -days, to: currentStart) ?? currentStart
-
-        let current = sessions.filter { $0.start >= currentStart }
-        let previous = sessions.filter { $0.start >= previousStart && $0.start < currentStart }
-        return FocusStats(
-            timeLocked: current.reduce(0) { $0 + $1.duration },
-            previousTimeLocked: previous.reduce(0) { $0 + $1.duration },
-            emergencyUsed: current.filter(\.emergency).count,
-            streakDays: streakDays()
-        )
+    func markRecoveryCodeSaved() {
+        store.recoveryCodeSaved = true
+        reload()
     }
 
-    /// Days in a row, up to today, with at least one lock that ended with a card.
-    private func streakDays() -> Int {
-        let calendar = Calendar.current
-        let days = Set(sessions.filter { !$0.emergency }.map { calendar.startOfDay(for: $0.end) })
-        var day = calendar.startOfDay(for: .now)
-        if !days.contains(day) {
-            day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
+    func setAppearance(_ value: Appearance) {
+        store.appearance = value
+        reload()
+    }
+
+    /// Emergency unlocks per week, 0 to 10. Raising it adds to this week's remaining.
+    func setEmergencyPerWeek(_ value: Int) {
+        var allowance = store.emergency
+        allowance.perWeek = min(10, max(0, value))
+        allowance.used = min(allowance.used, allowance.perWeek)
+        store.emergency = allowance
+        reload()
+    }
+
+    /// Today's locked time, including the session running now.
+    func focusedToday(now: Date = .now) -> Double {
+        var total = focusLog.seconds(on: now)
+        if let lock {
+            let start = max(lock.since, Calendar.current.startOfDay(for: now))
+            total += max(0, now.timeIntervalSince(start))
         }
-        var count = 0
-        while days.contains(day) {
-            count += 1
-            day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
-        }
-        return count
+        return total
     }
 
-    // MARK: Errors
+    /// Mon to Sun of this week, in seconds, including the running session.
+    func focusedThisWeek(now: Date = .now) -> Double {
+        let calendar = Calendar.current
+        let monday = EmergencyAllowance.mondayOfThisWeek(now)
+        var total = 0.0
+        for offset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: monday), day <= now else { continue }
+            total += focusLog.seconds(on: day)
+        }
+        if let lock { total += max(0, now.timeIntervalSince(max(lock.since, monday))) }
+        return total
+    }
+
+    /// Uses one emergency unlock. The caller has already asked "Are you sure?".
+    func emergencyUnlock() {
+        guard lock != nil, emergency.remaining > 0 else { return }
+        var allowance = store.emergency
+        allowance.used += 1
+        store.emergency = allowance
+        endLock(.emergency)
+    }
+
+    /// Unlocks with the recovery code. Doesn't use an emergency unlock.
+    /// Returns false when the code doesn't match.
+    func unlockWithRecovery(_ entered: String) -> Bool {
+        let cleaned = entered.uppercased().filter { !$0.isWhitespace }
+        guard lock != nil, cleaned == recoveryCode else { return false }
+        endLock(.recovery)
+        return true
+    }
+
+    private func endLock(_ method: UnlockMethod) {
+        if let lock {
+            var log = store.focusLog
+            log.add(from: lock.since, to: .now)
+            if method == .card { log.cardUnlocks += 1 }
+            store.focusLog = log
+        }
+        FocusEngine.unlock(store: store)
+        reload()
+    }
+
+    func requestAuthorization() async {
+        do {
+            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+        } catch {
+            alertMessage = "Screen Time access was not granted. You can allow it in Settings."
+        }
+        isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
+    }
+
+    // MARK: Modes
+
+    /// The mode the Lock button locks.
+    var mode: FocusMode { modes.first { $0.id == selectedModeID } ?? modes.first ?? FocusMode() }
+
+    func select(_ mode: FocusMode) {
+        guard lock == nil else { return }
+        store.selectedModeID = mode.id
+        reload()
+    }
+
+    /// Adds a mode or replaces the one with the same id.
+    func saveMode(_ mode: FocusMode) {
+        var all = modes
+        if let index = all.firstIndex(where: { $0.id == mode.id }) {
+            all[index] = mode
+        } else {
+            all.append(mode)
+            store.selectedModeID = mode.id
+        }
+        store.modes = all
+        reload()
+    }
+
+    func deleteMode(_ mode: FocusMode) {
+        guard lock == nil, modes.count > 1 else { return }
+        store.modes = modes.filter { $0.id != mode.id }
+        reload()
+    }
+
+    func saveSelection(_ selection: FamilyActivitySelection, for modeID: UUID) {
+        guard var updated = modes.first(where: { $0.id == modeID }) else { return }
+        updated.selection = selection
+        saveMode(updated)
+    }
+
+    /// Pairs a card, replacing any card paired before.
+    func pairCard() async {
+        guard lock == nil else { return }
+        do {
+            let id = try await scanner.scan(
+                prompt: "Hold your card near the top of the iPhone.",
+                success: "Card paired.",
+                writeIfBlank: true
+            )
+            store.card = PairedCard(tagID: id)
+            reload()
+        } catch {
+            handle(error)
+        }
+    }
+
+    /// One scan toggles: locks when unlocked, unlocks when locked.
+    func scanToToggle() async {
+        guard let card else {
+            alertMessage = "Pair a card first."
+            return
+        }
+        if lock == nil {
+            guard isAuthorized else {
+                alertMessage = "Allow Screen Time access first."
+                return
+            }
+            guard !mode.isEmpty else {
+                alertMessage = "Choose apps to block for \(mode.name) first."
+                return
+            }
+        }
+        let locking = lock == nil
+        do {
+            _ = try await scanner.scan(
+                prompt: locking ? "Hold your card near the top of the iPhone to lock." : "Hold your card near the top of the iPhone to unlock.",
+                success: locking ? "Locked." : "Unlocked.",
+                accept: { $0 == card.tagID }
+            )
+            print("[FocusCard] card accepted, \(locking ? "locking" : "unlocking")")
+            if locking {
+                FocusEngine.lock(mode, store: store)
+            } else {
+                endLock(.card)
+            }
+            reload()
+            print("[FocusCard] locked state now: \(lock != nil)")
+        } catch {
+            handle(error)
+        }
+    }
+
+    /// Opened from the card's link: the card was tapped while no scan was running
+    /// (iOS reads it in the background and offers to open Focus Card).
+    /// Locking and unlocking still need the button, so explain that.
+    func handleCardLink(_ url: URL) async {
+        guard url.scheme == "focuscard", url.host == "card" else { return }
+        reload()
+        print("[FocusCard] card tapped outside a scan: \(url)")
+        alertMessage = lock != nil
+            ? "Card tapped, but Focus Card wasn't scanning. Tap Scan card to unlock first, then hold your card to the top of the iPhone."
+            : "Card tapped, but Focus Card wasn't scanning. Tap Scan card to lock first, then hold your card to the top of the iPhone."
+    }
 
     private func handle(_ error: Error) {
         if let scanError = error as? NFCScanner.ScanError {
-            // Cancelled and rejected scans already explain themselves on the sheet.
-            if case .unavailable = scanError { alertMessage = scanError.errorDescription }
+            // While testing, every failure except a plain cancel shows in the app too,
+            // and goes to the Xcode console.
+            print("[FocusCard] scan failed: \(scanError)")
+            if let text = scanError.errorDescription { alertMessage = text }
             return
         }
+        print("[FocusCard] scan error: \(error)")
         alertMessage = error.localizedDescription
     }
 }

@@ -1,94 +1,128 @@
+import UIKit
 import SwiftUI
 
+/// Only reachable while unlocked, so it can't be used to get out of a lock.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("haptics") private var haptics = true
-    @AppStorage("appearance") private var appearance = "system"
+    @Environment(\.dismiss) private var dismiss
     @State private var showCode = false
+    @State private var showSave = false
 
     var body: some View {
-        Form {
-            Section {
-                Stepper(value: allowance, in: 0...20) {
-                    LabeledContent("Emergency unlocks a week", value: "\(model.emergencyAllowance)")
+        NavigationStack {
+            Form {
+                Section {
+                    Stepper(value: Binding(
+                        get: { model.emergency.perWeek },
+                        set: { model.setEmergencyPerWeek($0) }
+                    ), in: 0...10) {
+                        LabeledContent("Per week", value: "\(model.emergency.perWeek)")
+                    }
+                } header: {
+                    Text("Emergency unlocks")
+                } footer: {
+                    Text("\(model.emergency.remaining) left this week. They reset every Monday.")
                 }
-            } footer: {
-                Text("Refills every Monday.")
-            }
-            Section {
-                LabeledContent("Recovery code") {
-                    Text(showCode ? (model.recoveryCode ?? "None yet") : "••••-••••")
-                        .font(Theme.lcdFont(17))
+
+                Section("Recovery password") {
+                    LabeledContent("Password") {
+                        Text(showCode ? model.recoveryCode : "FC-••••-••••")
+                            .font(.body.monospaced())
+                            .textSelection(.enabled)
+                    }
+                    Button(showCode ? "Hide" : "Show") { showCode.toggle() }
+                    if model.recoveryCodeSaved {
+                        Label("Saved to Passwords", systemImage: "checkmark")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Button("Save to Passwords") { showSave = true }
+                    }
                 }
-                Button(showCode ? "Hide code" : "Show code") { showCode.toggle() }
-            } footer: {
-                Text("Unlocks a lost card without using an emergency unlock. Keep it somewhere safe, not on this phone only.")
-            }
-            Section("Look and feel") {
-                Toggle("Haptics", isOn: $haptics)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Appearance")
-                    LCDSegment(
-                        options: ["system", "light", "dark"],
-                        title: { $0.capitalized },
-                        selection: $appearance
-                    )
+
+                Section("Appearance") {
+                    Picker("Appearance", selection: Binding(
+                        get: { model.appearance },
+                        set: { model.setAppearance($0) }
+                    )) {
+                        ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
             }
-            Section {
-                NavigationLink("Cards") { CardsView() }
-                NavigationLink("Set up Home Screen") { MinimalSetupView() }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
             }
-            Section {
-                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+            .sheet(isPresented: $showSave) {
+                SaveRecoveryView()
             }
         }
-        .lcdForm()
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { model.ensureRecoveryCode() }
-    }
-
-    private var allowance: Binding<Int> {
-        Binding(get: { model.emergencyAllowance }, set: { model.setEmergencyAllowance($0) })
     }
 }
 
-/// Decision 15c: a minimal Home Screen through an iOS Focus and a Shortcuts automation.
-/// Apple doesn't let apps change the Home Screen, so this is set up once by hand.
-struct MinimalSetupView: View {
-    var body: some View {
-        List {
-            Section {
-                Text("When Focus Card locks, your iPhone can switch to a near-empty Home Screen in grayscale. Set it up once in iOS.")
-                    .foregroundStyle(.secondary)
-            }
-            Section("1. Make a minimal Home Screen") {
-                step("Long-press the Home Screen, then tap Edit and Add Page.")
-                step("Add only the apps you want while locked, such as Phone, Messages, Maps and Camera.")
-            }
-            Section("2. Create a Focus") {
-                step("Open Settings, then Focus, then +, then Custom. Name it Focus Card.")
-                step("Under Customize Screens, choose the Home Screen page you just made.")
-            }
-            Section("3. Add the automation") {
-                step("Open Shortcuts, then Automation, then +, then App. Choose Focus Card and Is Closed.")
-                step("Choose Run Immediately.")
-                step("Add the action Is Focus Card Locked.")
-                step("Add If: if the result is true, add Set Focus Card On and Set Color Filters On. Otherwise, add Set Focus Card Off and Set Color Filters Off.")
-            }
-            Section {
-                Link(destination: URL(string: "shortcuts://")!) {
-                    Label("Open Shortcuts", systemImage: "arrow.up.forward.app")
-                }
-            }
-        }
-        .lcdForm()
-        .navigationTitle("Set up Home Screen")
-        .navigationBarTitleDisplayMode(.inline)
-    }
+/// Asks the user to keep the recovery password in Apple's Passwords app.
+///
+/// iOS only shows its own "Save Password?" sheet for apps linked to a website
+/// (webcredentials). Focus Card has none, so this copies the password and
+/// opens Passwords, where it's pasted into a new entry.
+struct SaveRecoveryView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var copied = false
 
-    private func step(_ text: String) -> some View {
-        Text(text)
+    var body: some View {
+        VStack(spacing: HomeView.spacing) {
+            Image(systemName: "key.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(.white)
+                .frame(width: 60, height: 60)
+                .background(Color(.systemGray), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.top, 8)
+            Text("Save Recovery Password?")
+                .font(.title3.weight(.semibold))
+            Text(copied
+                 ? "Copied. In Passwords, tap +, name it Focus Card, and paste the password."
+                 : "Save it to Passwords so you can unlock if your card is lost or will not scan.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Text(model.recoveryCode)
+                .font(.title3.monospaced().weight(.semibold))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 14))
+            Spacer(minLength: 0)
+            if copied {
+                Button {
+                    model.markRecoveryCodeSaved()
+                    dismiss()
+                } label: {
+                    Text("Done, It's Saved").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+            } else {
+                Button {
+                    UIPasteboard.general.string = model.recoveryCode
+                    copied = true
+                    if let url = URL(string: "passwords://") { openURL(url) }
+                } label: {
+                    Text("Save to Passwords").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+            }
+            Button("Not Now") { dismiss() }
+                .padding(.bottom, 4)
+        }
+        .padding(24)
+        .presentationDetents([.medium])
+        .sensoryFeedback(.success, trigger: copied)
     }
 }
