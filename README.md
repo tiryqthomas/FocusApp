@@ -14,7 +14,7 @@ This branch is the core loop only, for testing. The full version (modes, schedul
 ## Using it
 
 1. Tap **Allow Screen Time**.
-2. Tap **Pair card** and hold the card to the top of the iPhone. The card needs some text or a link written on it (NTAG213/215 stickers work).
+2. Tap **Pair card** and hold the card to the top of the iPhone. A blank card gets a link written to it automatically; a card that already has data is used as it is (NTAG213/215 stickers work).
 3. Tap **Blocked apps** and choose apps.
 4. Tap **Scan card to lock**. Tap **Scan card to unlock** and scan again to unlock.
 

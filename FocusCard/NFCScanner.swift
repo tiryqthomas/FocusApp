@@ -16,7 +16,7 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
             case .unavailable: "This iPhone can't read NFC cards."
             case .cancelled: nil
             case .rejected: "That card isn't paired."
-            case .empty: "This card has no data. Write a link or text to it in Shortcuts, then try again."
+            case .empty: "This card has no data and can't be written. Try an NTAG213 or NTAG215 sticker."
             }
         }
     }
@@ -25,18 +25,22 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
     private var continuation: CheckedContinuation<String, Error>?
     private var successMessage = ""
     private var accept: (String) -> Bool = { _ in true }
+    private var writeIfBlank = false
 
     /// Shows the scan sheet and returns the card's ID as hex.
     /// - Parameters:
     ///   - prompt: The line shown on the sheet while it waits.
     ///   - success: The line shown when the card is accepted.
     ///   - accept: Return false to reject a card (for example, one that isn't paired).
-    func scan(prompt: String, success: String, accept: @escaping (String) -> Bool = { _ in true }) async throws -> String {
+    ///   - writeIfBlank: When the card has no data and can be written, write a link to it
+    ///     first (used when pairing), then read it back.
+    func scan(prompt: String, success: String, writeIfBlank: Bool = false, accept: @escaping (String) -> Bool = { _ in true }) async throws -> String {
         guard NFCNDEFReaderSession.readingAvailable else { throw ScanError.unavailable }
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             self.successMessage = success
             self.accept = accept
+            self.writeIfBlank = writeIfBlank
             let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: true)
             session.alertMessage = prompt
             self.session = session
@@ -86,13 +90,43 @@ final class NFCScanner: NSObject, NFCNDEFReaderSessionDelegate, @unchecked Senda
                     return
                 }
                 tag.readNDEF { message, readError in
-                    guard readError == nil, let payload = message?.records.first?.payload, !payload.isEmpty else {
+                    if readError == nil, let payload = message?.records.first?.payload, !payload.isEmpty {
+                        self.complete(payload: payload, session: session)
+                    } else if self.writeIfBlank, status == .readWrite {
+                        self.writeLink(to: tag, session: session)
+                    } else {
                         session.invalidate(errorMessage: ScanError.empty.errorDescription ?? "")
                         self.finish(.failure(ScanError.empty))
-                        return
                     }
-                    self.complete(payload: payload, session: session)
                 }
+            }
+        }
+    }
+
+    /// Writes a unique link to a blank card, then reads it back so the saved ID
+    /// is exactly what later scans will read.
+    private func writeLink(to tag: NFCNDEFTag, session: NFCNDEFReaderSession) {
+        guard let url = URL(string: "focuscard://card/\(UUID().uuidString.lowercased())"),
+              let record = NFCNDEFPayload.wellKnownTypeURIPayload(url: url)
+        else {
+            session.invalidate(errorMessage: ScanError.empty.errorDescription ?? "")
+            finish(.failure(ScanError.empty))
+            return
+        }
+        session.alertMessage = "Setting up your card. Keep holding it."
+        tag.writeNDEF(NFCNDEFMessage(records: [record])) { writeError in
+            if writeError != nil {
+                session.invalidate(errorMessage: "Couldn't write to this card. Hold it still and try again.")
+                self.finish(.failure(ScanError.cancelled))
+                return
+            }
+            tag.readNDEF { message, readError in
+                guard readError == nil, let payload = message?.records.first?.payload, !payload.isEmpty else {
+                    session.invalidate(errorMessage: "Couldn't check the card. Try again.")
+                    self.finish(.failure(ScanError.cancelled))
+                    return
+                }
+                self.complete(payload: payload, session: session)
             }
         }
     }

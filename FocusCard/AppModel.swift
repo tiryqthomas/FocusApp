@@ -46,7 +46,8 @@ final class AppModel {
         do {
             let id = try await scanner.scan(
                 prompt: "Hold your card near the top of the iPhone.",
-                success: "Card paired."
+                success: "Card paired.",
+                writeIfBlank: true
             )
             store.card = PairedCard(tagID: id)
             reload()
