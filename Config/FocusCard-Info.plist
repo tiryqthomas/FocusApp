@@ -4,6 +4,17 @@
 <dict>
 	<key>AppGroupID</key>
 	<string>$(APP_GROUP_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).card</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>focuscard</string>
+			</array>
+		</dict>
+	</array>
 	<key>NFCReaderUsageDescription</key>
 	<string>Focus Card reads your card to lock and unlock apps.</string>
 </dict>

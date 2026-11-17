@@ -1,3 +1,4 @@
+import CoreNFC
 import FamilyControls
 import Foundation
 import Observation
@@ -90,6 +91,32 @@ final class AppModel {
         } catch {
             handle(error)
         }
+    }
+
+    /// Opened from the card's link (iOS reads the card in the background and offers
+    /// to open Focus Card). Toggles the lock if the link belongs to the paired card.
+    func handleCardLink(_ url: URL) async {
+        guard url.scheme == "focuscard", url.host == "card" else { return }
+        guard let card,
+              let payload = NFCNDEFPayload.wellKnownTypeURIPayload(url: url)?.payload,
+              payload.map({ String(format: "%02X", $0) }).joined() == card.tagID
+        else {
+            print("[FocusCard] link from an unpaired card: \(url)")
+            alertMessage = NFCScanner.ScanError.rejected.errorDescription
+            return
+        }
+        reload()
+        if lock != nil {
+            FocusEngine.unlock(store: store)
+        } else {
+            guard isAuthorized, !mode.isEmpty else {
+                alertMessage = "Allow Screen Time and choose apps first."
+                return
+            }
+            FocusEngine.lock(mode, store: store)
+        }
+        reload()
+        print("[FocusCard] card link toggled, locked now: \(lock != nil)")
     }
 
     private func handle(_ error: Error) {
