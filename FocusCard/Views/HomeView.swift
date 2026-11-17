@@ -150,13 +150,18 @@ struct HomeView: View {
                         Button("Delete \(model.mode.name)", systemImage: "trash", role: .destructive) { model.deleteMode(model.mode) }
                     }
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: Theme.pillHeight, height: 24)
+                    // A labelled capsule with a full 44 pt tap area, so it's easy to see and hit.
+                    Label("Edit", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.blue)
+                        .padding(.horizontal, 14)
+                        .frame(height: 32)
+                        .background(Color.blue.opacity(0.15), in: Capsule())
+                        .frame(minHeight: Theme.pillHeight)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("\(model.mode.name) options")
+                .fixedSize()
+                .accessibilityLabel("Edit \(model.mode.name)")
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
