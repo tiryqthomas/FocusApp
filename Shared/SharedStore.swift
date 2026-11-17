@@ -24,9 +24,29 @@ final class SharedStore {
         }
     }
 
-    var mode: FocusMode {
-        get { load("workMode") ?? FocusMode() }
-        set { save(newValue, "workMode") }
+    /// All modes. The first launch after the update carries the old single
+    /// Work mode over, and adds Sleep.
+    var modes: [FocusMode] {
+        get {
+            if let modes: [FocusMode] = load("modes"), !modes.isEmpty { return modes }
+            let work: FocusMode = load("workMode") ?? FocusMode()
+            let initial = [work, FocusMode(name: "Sleep", symbol: "moon.fill")]
+            save(initial, "modes") // so ids stay the same from here on
+            return initial
+        }
+        set { save(newValue, "modes") }
+    }
+
+    var selectedModeID: UUID? {
+        get { load("selectedModeID") }
+        set { save(newValue, "selectedModeID") }
+    }
+
+    /// Name of the locked mode, for the shield. Kept as plain text so the shield
+    /// extension reads it quickly.
+    var lockedModeName: String? {
+        get { defaults.string(forKey: "lockedModeName") }
+        set { defaults.set(newValue, forKey: "lockedModeName") }
     }
 
     var card: PairedCard? {

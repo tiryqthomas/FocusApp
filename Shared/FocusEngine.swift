@@ -22,11 +22,13 @@ enum FocusEngine {
         settings.application.denyAppRemoval = true
         // Bypass fix: the date and time must stay automatic while locked.
         settings.dateAndTime.requireAutomaticDateAndTime = true
+        store.lockedModeName = mode.name
         store.lock = LockState(modeName: mode.name, since: .now)
     }
 
     static func unlock(store: SharedStore = SharedStore()) {
         settings.clearAllSettings()
+        store.lockedModeName = nil
         store.lock = nil
     }
 }

@@ -6,36 +6,43 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var picking = false
+    @State private var pickingModeID: UUID?
     @State private var selection = FamilyActivitySelection()
     @State private var range: StatsRange = .week
     @State private var showStats = false
     @State private var showSettings = false
+    @State private var editing: FocusMode?
+
+    /// One spacing value between every block and button on this screen.
+    static let spacing: CGFloat = 12
 
     var body: some View {
-        VStack(spacing: 14) {
-            ScreenTimeCard(range: $range) { showStats = true }
+        ScrollView {
+            VStack(spacing: Self.spacing) {
+                ScreenTimeCard(range: $range) { showStats = true }
 
-            ModePill(name: model.mode.name, systemImage: "briefcase", selected: true)
+                modes
 
-            details
-
-            Spacer(minLength: 0)
-
+                details
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+        }
+        .safeAreaInset(edge: .bottom) {
             Button {
                 Task { await model.scanToToggle() }
             } label: {
                 Label("Lock \(model.mode.name)", systemImage: "lock.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 58)
+                    .frame(height: 54)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color(.systemBackground))
-            .background(Color.primary, in: Capsule())
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
             .sensoryFeedback(.impact, trigger: model.lock)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -62,15 +69,54 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+        .sheet(item: $editing) { mode in
+            ModeEditView(mode: mode)
+        }
         .familyActivityPicker(isPresented: $picking, selection: $selection)
         // Save whenever the picked list changes, and again when the picker closes,
         // so the new list is never lost to the order these two updates arrive in.
         .onChange(of: selection) { _, newValue in
-            model.saveSelection(newValue)
+            if let id = pickingModeID { model.saveSelection(newValue, for: id) }
         }
         .onChange(of: picking) { _, isOpen in
-            if !isOpen { model.saveSelection(selection) }
+            if !isOpen, let id = pickingModeID { model.saveSelection(selection, for: id) }
         }
+    }
+
+    private func pickApps(for mode: FocusMode) {
+        pickingModeID = mode.id
+        selection = mode.selection
+        picking = true
+    }
+
+    /// Every mode as a pill. The selected one is tinted glass. "New Focus" adds one.
+    private var modes: some View {
+        VStack(spacing: Self.spacing) {
+            ForEach(model.modes) { mode in
+                ModePill(
+                    mode: mode,
+                    selected: mode.id == model.mode.id,
+                    canDelete: model.modes.count > 1,
+                    onSelect: { model.select(mode) },
+                    onChangeApps: { pickApps(for: mode) },
+                    onEdit: { editing = mode },
+                    onDelete: { model.deleteMode(mode) }
+                )
+            }
+            Button {
+                editing = FocusMode(name: "", symbol: "sparkles")
+            } label: {
+                Label("New Focus", systemImage: "plus")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+        }
+        .animation(.snappy, value: model.modes)
+        .animation(.snappy, value: model.selectedModeID)
+        .sensoryFeedback(.selection, trigger: model.selectedModeID)
     }
 
     /// Label and value rows: focus time, Screen Time access, blocked apps, card.
@@ -87,17 +133,16 @@ struct HomeView: View {
                     Task { await model.requestAuthorization() }
                 } label: {
                     DetailRow(label: "Screen Time", chevron: true) {
-                        Text("Allow").foregroundStyle(.blue)
+                        Text("Allow").foregroundStyle(.tint)
                     }
                 }
                 .buttonStyle(.plain)
                 Divider()
             }
             Button {
-                selection = model.mode.selection
-                picking = true
+                pickApps(for: model.mode)
             } label: {
-                DetailRow(label: "Blocked", chevron: true) {
+                DetailRow(label: "Blocked in \(model.mode.name)", chevron: true) {
                     Text(model.mode.selectionSummary)
                 }
             }
@@ -110,7 +155,7 @@ struct HomeView: View {
                 DetailRow(label: "Card", chevron: true) {
                     HStack(spacing: 8) {
                         Circle()
-                            .fill(model.card == nil ? Color(.systemGray3) : .blue)
+                            .fill(model.card == nil ? Color(.systemGray3) : .accentColor)
                             .frame(width: 8, height: 8)
                         Text(model.card == nil ? "Pair a card" : "Paired card")
                     }
@@ -147,32 +192,63 @@ struct DetailRow<Value: View>: View {
 }
 
 /// A Focus-style capsule: icon, name, and a three-dot menu.
+/// Selected is tinted Liquid Glass; the rest are plain grouped capsules.
 struct ModePill: View {
-    let name: String
-    let systemImage: String
+    let mode: FocusMode
     let selected: Bool
+    let canDelete: Bool
+    let onSelect: () -> Void
+    let onChangeApps: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        HStack {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(selected ? Color.blue : Color.primary)
-                .frame(width: 44)
-            Spacer()
-            Text(name).font(.headline)
-            Spacer()
-            Image(systemName: "ellipsis")
-                .font(.body.weight(.semibold))
-                .frame(width: 34, height: 34)
-                .background(selected ? Color(.tertiarySystemFill) : .clear, in: Circle())
-                .frame(width: 44)
+        HStack(spacing: 12) {
+            Button(action: onSelect) {
+                HStack(spacing: 12) {
+                    Image(systemName: mode.symbol)
+                        .font(.title3)
+                        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                        .frame(width: 32)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(mode.name).font(.headline)
+                        Text(mode.selectionSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(mode.name), \(mode.selectionSummary)")
+            .accessibilityAddTraits(selected ? [.isSelected] : [])
+
+            Menu {
+                Button("Change Blocked Apps", systemImage: "app.badge.checkmark", action: onChangeApps)
+                Button("Edit Name and Icon", systemImage: "pencil", action: onEdit)
+                if canDelete {
+                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 36, height: 36)
+                    .background(Color(.tertiarySystemFill), in: Circle())
+                    .contentShape(Circle())
+            }
+            .accessibilityLabel("\(mode.name) options")
         }
-        .padding(.horizontal, 6)
-        .frame(height: 54)
-        .background(Color(.secondarySystemGroupedBackground), in: Capsule())
-        .overlay {
-            if selected { Capsule().strokeBorder(.blue, lineWidth: 2) }
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .frame(height: 62)
+        .background {
+            if !selected {
+                Capsule().fill(Color(.secondarySystemGroupedBackground))
+            }
         }
+        .glassEffect(selected ? .regular.tint(.accentColor.opacity(0.3)).interactive() : .identity, in: .capsule)
     }
 }
 

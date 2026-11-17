@@ -33,7 +33,7 @@ struct SettingsView: View {
                     Button(showCode ? "Hide" : "Show") { showCode.toggle() }
                     if model.recoveryCodeSaved {
                         Label("Saved to Passwords", systemImage: "checkmark")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(.secondary)
                     } else {
                         Button("Save to Passwords") { showSave = true }
                     }
@@ -76,7 +76,7 @@ struct SaveRecoveryView: View {
     @State private var copied = false
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: HomeView.spacing) {
             Image(systemName: "key.fill")
                 .font(.system(size: 28))
                 .foregroundStyle(.white)
@@ -95,7 +95,7 @@ struct SaveRecoveryView: View {
                 .font(.title3.monospaced().weight(.semibold))
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(height: 54)
                 .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 14))
             Spacer(minLength: 0)
             if copied {
@@ -103,7 +103,7 @@ struct SaveRecoveryView: View {
                     model.markRecoveryCodeSaved()
                     dismiss()
                 } label: {
-                    Text("Done, It's Saved").font(.headline).frame(maxWidth: .infinity).frame(height: 52)
+                    Text("Done, It's Saved").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
@@ -113,7 +113,7 @@ struct SaveRecoveryView: View {
                     copied = true
                     if let url = URL(string: "passwords://") { openURL(url) }
                 } label: {
-                    Text("Save to Passwords").font(.headline).frame(maxWidth: .infinity).frame(height: 52)
+                    Text("Save to Passwords").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)

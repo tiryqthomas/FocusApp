@@ -1,10 +1,29 @@
 import Foundation
 import FamilyControls
 
-/// The apps to block while locked. The simplified app has one mode, Work.
-struct FocusMode: Codable, Equatable {
+/// A named set of apps to block, such as Work or Sleep.
+struct FocusMode: Codable, Equatable, Identifiable {
+    var id = UUID()
     var name = "Work"
+    /// SF Symbol shown on the mode's pill.
+    var symbol = "briefcase.fill"
     var selection = FamilyActivitySelection()
+
+    init(id: UUID = UUID(), name: String = "Work", symbol: String = "briefcase.fill", selection: FamilyActivitySelection = FamilyActivitySelection()) {
+        self.id = id
+        self.name = name
+        self.symbol = symbol
+        self.selection = selection
+    }
+
+    // Reads modes saved by older versions, which had no id or symbol.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Work"
+        symbol = try c.decodeIfPresent(String.self, forKey: .symbol) ?? "briefcase.fill"
+        selection = try c.decodeIfPresent(FamilyActivitySelection.self, forKey: .selection) ?? FamilyActivitySelection()
+    }
 
     var isEmpty: Bool {
         selection.applicationTokens.isEmpty
@@ -23,6 +42,13 @@ struct FocusMode: Codable, Equatable {
         if sites > 0 { parts.append(sites == 1 ? "1 website" : "\(sites) websites") }
         return parts.isEmpty ? "No apps chosen" : parts.joined(separator: ", ")
     }
+
+    /// Icons offered when making or editing a mode.
+    static let symbols = [
+        "briefcase.fill", "moon.fill", "book.fill", "figure.run",
+        "dumbbell.fill", "car.fill", "fork.knife", "person.2.fill",
+        "gamecontroller.fill", "graduationcap.fill", "leaf.fill", "sparkles",
+    ]
 }
 
 /// The NFC card or sticker that locks and unlocks.

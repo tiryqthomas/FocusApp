@@ -9,7 +9,8 @@ final class AppModel {
     private let store = SharedStore()
     private let scanner = NFCScanner()
 
-    var mode = FocusMode()
+    var modes: [FocusMode] = []
+    var selectedModeID: UUID?
     var card: PairedCard?
     var lock: LockState?
     var isAuthorized = false
@@ -25,7 +26,8 @@ final class AppModel {
     init() { reload() }
 
     func reload() {
-        mode = store.mode
+        modes = store.modes
+        selectedModeID = store.selectedModeID.flatMap { id in modes.contains { $0.id == id } ? id : nil } ?? modes.first?.id
         card = store.card
         lock = store.lock
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
@@ -124,11 +126,40 @@ final class AppModel {
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
     }
 
-    func saveSelection(_ selection: FamilyActivitySelection) {
-        var updated = mode
-        updated.selection = selection
-        store.mode = updated
+    // MARK: Modes
+
+    /// The mode the Lock button locks.
+    var mode: FocusMode { modes.first { $0.id == selectedModeID } ?? modes.first ?? FocusMode() }
+
+    func select(_ mode: FocusMode) {
+        guard lock == nil else { return }
+        store.selectedModeID = mode.id
         reload()
+    }
+
+    /// Adds a mode or replaces the one with the same id.
+    func saveMode(_ mode: FocusMode) {
+        var all = modes
+        if let index = all.firstIndex(where: { $0.id == mode.id }) {
+            all[index] = mode
+        } else {
+            all.append(mode)
+            store.selectedModeID = mode.id
+        }
+        store.modes = all
+        reload()
+    }
+
+    func deleteMode(_ mode: FocusMode) {
+        guard lock == nil, modes.count > 1 else { return }
+        store.modes = modes.filter { $0.id != mode.id }
+        reload()
+    }
+
+    func saveSelection(_ selection: FamilyActivitySelection, for modeID: UUID) {
+        guard var updated = modes.first(where: { $0.id == modeID }) else { return }
+        updated.selection = selection
+        saveMode(updated)
     }
 
     /// Pairs a card, replacing any card paired before.
@@ -159,7 +190,7 @@ final class AppModel {
                 return
             }
             guard !mode.isEmpty else {
-                alertMessage = "Choose apps to block first."
+                alertMessage = "Choose apps to block for \(mode.name) first."
                 return
             }
         }

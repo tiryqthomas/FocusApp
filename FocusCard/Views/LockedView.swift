@@ -45,17 +45,17 @@ struct LockedView: View {
                 Spacer()
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: HomeView.spacing) {
                 Button {
                     Task { await model.scanToToggle() }
                 } label: {
                     Label("Tap Card to Unlock", systemImage: "wave.3.right")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 58)
+                        .frame(height: 54)
                 }
-                .buttonStyle(.plain)
-                .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
 
                 EmergencyHoldButton(remaining: model.emergency.remaining) {
                     confirmEmergency = true
@@ -63,8 +63,7 @@ struct LockedView: View {
 
                 Button("Lost your card?") { showRecovery = true }
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.blue)
-                    .padding(.vertical, 6)
+                    .frame(minHeight: 44)
             }
         }
         .padding(.horizontal, 16)
@@ -113,7 +112,7 @@ struct EmergencyHoldButton: View {
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(remaining > 0 ? Color.red : Color.secondary)
             .frame(maxWidth: .infinity)
-            .frame(height: 46)
+            .frame(height: 54)
             .background(alignment: .leading) {
                 GeometryReader { proxy in
                     Rectangle()
@@ -134,6 +133,8 @@ struct EmergencyHoldButton: View {
             .disabled(remaining == 0)
             .sensoryFeedback(.warning, trigger: pressing) { _, new in new }
             .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(remaining > 0 ? "Emergency unlock, \(remaining) left. Press and hold for 5 seconds." : "No emergency unlocks left until Monday")
+            .accessibilityAction { if remaining > 0 { onComplete() } }
     }
 }
 
@@ -146,7 +147,7 @@ struct RecoveryUnlockView: View {
     @State private var attempts = 0
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: HomeView.spacing) {
             Text("Recovery Password").font(.title3.weight(.semibold))
             Text("Use this if your card is lost or will not scan. It does not use an emergency unlock.")
                 .font(.subheadline)
@@ -159,7 +160,7 @@ struct RecoveryUnlockView: View {
                 .autocorrectionDisabled()
                 .font(.body.monospaced())
                 .multilineTextAlignment(.center)
-                .frame(height: 50)
+                .frame(height: 54)
                 .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 14))
                 .modifier(Shake(amount: CGFloat(attempts)))
                 .onSubmit(tryUnlock)
@@ -167,7 +168,7 @@ struct RecoveryUnlockView: View {
                 .font(.footnote)
                 .foregroundStyle(.red)
             Button(action: tryUnlock) {
-                Text("Unlock").font(.headline).frame(maxWidth: .infinity).frame(height: 52)
+                Text("Unlock").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
