@@ -82,9 +82,15 @@ final class SharedStore {
         set { save(newValue, "focusLog") }
     }
 
+    /// Dark unless changed in Settings.
     var appearance: Appearance {
-        get { load("appearance") ?? .system }
+        get { load("appearance") ?? .dark }
         set { save(newValue, "appearance") }
+    }
+
+    var hapticsOn: Bool {
+        get { load("hapticsOn") ?? true }
+        set { save(newValue, "hapticsOn") }
     }
 
     /// "FC-7K2M-9QXD". Leaves out 0, O, 1 and I so it's easy to read back.

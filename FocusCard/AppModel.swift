@@ -18,7 +18,8 @@ final class AppModel {
     var alertMessage: String?
     var emergency = EmergencyAllowance()
     var focusLog = FocusLog()
-    var appearance: Appearance = .system
+    var appearance: Appearance = .dark
+    var hapticsOn = true
     var recoveryCode = ""
     var recoveryCodeSaved = false
     /// Shown once per launch until the recovery code is saved.
@@ -38,6 +39,7 @@ final class AppModel {
         emergency = allowance
         focusLog = store.focusLog
         appearance = store.appearance
+        hapticsOn = store.hapticsOn
         recoveryCode = store.recoveryCode
         recoveryCodeSaved = store.recoveryCodeSaved
         // The 24-hour wait ends the next time the app runs after it's up.
@@ -92,6 +94,11 @@ final class AppModel {
         reload()
     }
 
+    func setHaptics(_ on: Bool) {
+        store.hapticsOn = on
+        reload()
+    }
+
     /// Emergency unlocks per week, 0 to 10. Raising it adds to this week's remaining.
     func setEmergencyPerWeek(_ value: Int) {
         var allowance = store.emergency
@@ -122,6 +129,28 @@ final class AppModel {
         }
         if let lock { total += max(0, now.timeIntervalSince(max(lock.since, monday))) }
         return total
+    }
+
+    /// Locked seconds for each day Mon to Sun of this week (today includes the running session).
+    func focusedByDayThisWeek(now: Date = .now) -> [Double] {
+        let calendar = Calendar.current
+        let monday = EmergencyAllowance.mondayOfThisWeek(now)
+        return (0..<7).map { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: monday) else { return 0 }
+            if calendar.isDate(day, inSameDayAs: now) { return focusedToday(now: now) }
+            return day > now ? 0 : focusLog.seconds(on: day)
+        }
+    }
+
+    /// Locked seconds over the same weekdays of last week, for "vs last week".
+    func focusedLastWeekSoFar(now: Date = .now) -> Double {
+        let calendar = Calendar.current
+        let monday = EmergencyAllowance.mondayOfThisWeek(now)
+        let todayIndex = calendar.dateComponents([.day], from: monday, to: calendar.startOfDay(for: now)).day ?? 0
+        return (0...max(0, todayIndex)).reduce(0) { total, offset in
+            guard let day = calendar.date(byAdding: .day, value: offset - 7, to: monday) else { return total }
+            return total + focusLog.seconds(on: day)
+        }
     }
 
     /// Uses one emergency unlock. The caller has already asked "Are you sure?".

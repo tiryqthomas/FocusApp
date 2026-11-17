@@ -15,7 +15,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.4), value: model.lock)
-        .sensoryFeedback(.success, trigger: model.lock)
+        .haptic(.success, enabled: model.hapticsOn, trigger: model.lock)
         .preferredColorScheme(colorScheme)
         .task { model.offerRecoverySaveIfNeeded() }
         .sheet(isPresented: $model.showSaveRecovery) {

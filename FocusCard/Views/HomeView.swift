@@ -1,70 +1,50 @@
-import Charts
 import FamilyControls
 import SwiftUI
 
-/// Unlocked: screen time chart, the mode, details, and the Lock button.
+/// Unlocked: today's rings, this week's focus, the mode, details, and the Lock button.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var picking = false
     @State private var pickingModeID: UUID?
     @State private var selection = FamilyActivitySelection()
-    @State private var range: StatsRange = .week
     @State private var showStats = false
     @State private var showSettings = false
     @State private var editing: FocusMode?
+    /// Rings start empty and spring to their values when Home appears.
+    @State private var ringsIn = false
 
-    /// One spacing value between every block and button on this screen.
-    static let spacing: CGFloat = 12
+    /// One spacing value between every block on the main screens.
+    static let spacing = Theme.spacing
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Self.spacing) {
-                ScreenTimeCard(range: $range) { showStats = true }
-
+            VStack(spacing: Theme.spacing) {
+                header
+                rings
+                WeekFocusCard { showStats = true }
                 modes
-
                 details
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
+            .padding(.horizontal, Theme.spacing)
+            .padding(.top, Theme.groupSpacing)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .safeAreaInset(edge: .bottom) {
             Button {
                 Task { await model.scanToToggle() }
             } label: {
                 Label("Lock \(model.mode.name)", systemImage: "lock.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .sensoryFeedback(.impact, trigger: model.lock)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .buttonStyle(CapsuleButtonStyle(fill: Theme.focus, text: .black))
+            .haptic(.impact, enabled: model.hapticsOn, trigger: model.lock)
+            .padding(.horizontal, Theme.spacing)
+            .padding(.vertical, Theme.groupSpacing)
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                VStack(spacing: 1) {
-                    Text("Focus Card").font(.headline)
-                    Text(Date.now, format: .dateTime.weekday(.wide).month(.abbreviated).day())
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .accessibilityLabel("Settings")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showStats) {
-            StatsView(initialRange: range)
+            StatsView(initialRange: .week)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -81,6 +61,15 @@ struct HomeView: View {
         .onChange(of: picking) { _, isOpen in
             if !isOpen, let id = pickingModeID { model.saveSelection(selection, for: id) }
         }
+        .onAppear {
+            guard !ringsIn else { return }
+            if reduceMotion {
+                ringsIn = true
+            } else {
+                withAnimation(.spring(duration: 0.9, bounce: 0.25).delay(0.15)) { ringsIn = true }
+            }
+        }
+        .haptic(.impact(weight: .light), enabled: model.hapticsOn && !reduceMotion, trigger: ringsIn)
     }
 
     private func pickApps(for mode: FocusMode) {
@@ -89,45 +78,116 @@ struct HomeView: View {
         picking = true
     }
 
-    /// Every mode as a pill. The selected one is tinted glass. "New Focus" adds one.
-    private var modes: some View {
-        VStack(spacing: Self.spacing) {
-            ForEach(model.modes) { mode in
-                ModePill(
-                    mode: mode,
-                    selected: mode.id == model.mode.id,
-                    canDelete: model.modes.count > 1,
-                    onSelect: { model.select(mode) },
-                    onChangeApps: { pickApps(for: mode) },
-                    onEdit: { editing = mode },
-                    onDelete: { model.deleteMode(mode) }
+    /// Date, "Today", and Settings.
+    private var header: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Date.now, format: .dateTime.weekday(.wide).day().month(.abbreviated))
+                    .font(.footnote.weight(.semibold))
+                    .textCase(.uppercase)
+                    .tracking(1)
+                    .foregroundStyle(.secondary)
+                Text("Today")
+                    .font(.largeTitle.bold())
+            }
+            Spacer()
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.title3)
+                    .foregroundStyle(.primary)
+                    .frame(width: Theme.pillHeight, height: Theme.pillHeight)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("Settings")
+        }
+        .padding(.top, Theme.groupSpacing)
+    }
+
+    /// Focused, Screen and Pickups for today. Tapping opens Stats.
+    private var rings: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let focused = model.focusedToday(now: context.date)
+            let screen = SampleStats.headline(.day)
+            HStack(spacing: Theme.groupSpacing) {
+                StatRing(
+                    progress: ringsIn ? focused / SampleStats.focusGoalSeconds : 0,
+                    color: Theme.focus,
+                    value: Self.clock(seconds: focused),
+                    label: "Focused"
+                )
+                StatRing(
+                    progress: ringsIn ? screen / SampleStats.screenLimitMinutes : 0,
+                    color: Theme.screen,
+                    value: Self.clock(seconds: screen * 60),
+                    label: "Screen"
+                )
+                StatRing(
+                    progress: ringsIn ? Double(SampleStats.pickupsToday) / SampleStats.pickupsLimit : 0,
+                    color: Theme.pickups,
+                    value: "\(SampleStats.pickupsToday)",
+                    label: "Pickups"
                 )
             }
-            Button {
-                editing = FocusMode(name: "", symbol: "sparkles")
-            } label: {
-                Label("New Focus", systemImage: "plus")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { showStats = true }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens Stats")
+    }
+
+    /// Every mode as a pill in one row; the selected one is solid. The menu edits the selected mode.
+    private var modes: some View {
+        VStack(spacing: Theme.groupSpacing) {
+            HStack {
+                SectionLabel("Focus Mode")
+                Menu {
+                    Button("Change Blocked Apps", systemImage: "app.badge.checkmark") { pickApps(for: model.mode) }
+                        .disabled(!model.isAuthorized)
+                    Button("Edit Name and Icon", systemImage: "pencil") { editing = model.mode }
+                    if model.modes.count > 1 {
+                        Button("Delete \(model.mode.name)", systemImage: "trash", role: .destructive) { model.deleteMode(model.mode) }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: Theme.pillHeight, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("\(model.mode.name) options")
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.groupSpacing) {
+                    ForEach(model.modes) { mode in
+                        ModeChip(mode: mode, selected: mode.id == model.mode.id) {
+                            model.select(mode)
+                        }
+                    }
+                    Button {
+                        editing = FocusMode(name: "", symbol: "sparkles")
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: Theme.pillHeight, height: Theme.pillHeight)
+                    }
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .accessibilityLabel("New Focus")
+                }
+            }
+            .scrollClipDisabled()
         }
         .animation(.snappy, value: model.modes)
         .animation(.snappy, value: model.selectedModeID)
-        .sensoryFeedback(.selection, trigger: model.selectedModeID)
+        .haptic(.selection, enabled: model.hapticsOn, trigger: model.selectedModeID)
     }
 
-    /// Label and value rows: focus time, Screen Time access, blocked apps, card.
+    /// Label and value rows: Screen Time access (until allowed), blocked apps, streak, card (until paired).
     private var details: some View {
         VStack(spacing: 0) {
-            TimelineView(.periodic(from: .now, by: 60)) { context in
-                DetailRow(label: "Today") {
-                    Text(formatDuration(model.focusedToday(now: context.date)))
-                }
-            }
-            Divider()
             if !model.isAuthorized {
                 Button {
                     Task { await model.requestAuthorization() }
@@ -137,7 +197,7 @@ struct HomeView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                Divider()
+                RowDivider()
             }
             Button {
                 pickApps(for: model.mode)
@@ -148,27 +208,132 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .disabled(!model.isAuthorized)
-            Divider()
-            Button {
-                Task { await model.pairCard() }
-            } label: {
-                DetailRow(label: "Card", chevron: true) {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(model.card == nil ? Color(.systemGray3) : .accentColor)
-                            .frame(width: 8, height: 8)
-                        Text(model.card == nil ? "Pair a card" : "Paired card")
-                    }
+            RowDivider()
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                DetailRow(label: "Streak") {
+                    let days = model.focusLog.streak(now: context.date)
+                    Text(days == 1 ? "1 day" : "\(days) days")
                 }
             }
-            .buttonStyle(.plain)
+            if model.card == nil {
+                RowDivider()
+                Button {
+                    Task { await model.pairCard() }
+                } label: {
+                    DetailRow(label: "Card", chevron: true) {
+                        Text("Pair a Card").foregroundStyle(.tint)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(.horizontal, 16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .card(padding: 0)
+    }
+
+    /// "2:14" from seconds (hours and minutes).
+    static func clock(seconds: Double) -> String {
+        let m = Int(seconds / 60)
+        return String(format: "%d:%02d", m / 60, m % 60)
     }
 }
 
-/// One label and value row, 50 points tall.
+/// A hairline between rows, inset to line up with the row text.
+struct RowDivider: View {
+    var body: some View { Divider().padding(.leading, Theme.cardPadding) }
+}
+
+/// One mode as a capsule. Selected is solid; the rest are glass.
+struct ModeChip: View {
+    let mode: FocusMode
+    let selected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            Label(mode.name, systemImage: mode.symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
+                .padding(.horizontal, Theme.spacing)
+                .frame(height: Theme.pillHeight)
+                .background {
+                    if selected { Capsule().fill(Color.primary) }
+                }
+        }
+        .buttonStyle(.plain)
+        .glassEffect(selected ? .identity : .regular.interactive(), in: .capsule)
+        .accessibilityLabel("\(mode.name), \(mode.selectionSummary)")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+/// Locked time each day this week, today in green, against last week. Tapping opens Stats.
+struct WeekFocusCard: View {
+    @Environment(AppModel.self) private var model
+    let openStats: () -> Void
+
+    private static let days = ["M", "T", "W", "T", "F", "S", "S"]
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let values = model.focusedByDayThisWeek(now: context.date)
+            let total = values.reduce(0, +)
+            let last = model.focusedLastWeekSoFar(now: context.date)
+            let top = max(values.max() ?? 0, 1)
+            let today = (Calendar.current.component(.weekday, from: context.date) + 5) % 7
+
+            VStack(spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("FOCUSED THIS WEEK")
+                        .font(.caption.weight(.semibold))
+                        .tracking(1)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    change(total: total, last: last)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+                HStack(alignment: .bottom, spacing: 10) {
+                    ForEach(0..<7, id: \.self) { i in
+                        VStack(spacing: Theme.groupSpacing) {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(i == today ? Theme.focus : Color(.systemGray4))
+                                .frame(height: max(6, 72 * values[i] / top))
+                                .frame(height: 72, alignment: .bottom)
+                            Text(Self.days[i])
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .animation(.snappy, value: values)
+            }
+            .card()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: openStats)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens Stats")
+    }
+
+    @ViewBuilder
+    private func change(total: Double, last: Double) -> some View {
+        if last > 0 {
+            let percent = Int(((total - last) / last * 100).rounded())
+            Text(percent >= 0 ? "▲ \(percent)% vs last week" : "▼ \(-percent)% vs last week")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(percent >= 0 ? Theme.focus : Color.secondary)
+        } else {
+            Text(formatDuration(total))
+                .font(.footnote.weight(.semibold))
+                .monospacedDigit()
+        }
+    }
+}
+
+/// One label and value row, 48 points tall, inset by the card padding.
 struct DetailRow<Value: View>: View {
     let label: String
     var chevron = false
@@ -186,166 +351,8 @@ struct DetailRow<Value: View>: View {
             }
         }
         .font(.subheadline)
-        .frame(minHeight: 50)
+        .frame(minHeight: Theme.rowHeight)
+        .padding(.horizontal, Theme.cardPadding)
         .contentShape(Rectangle())
-    }
-}
-
-/// A Focus-style capsule: icon, name, and a three-dot menu.
-/// Selected is tinted Liquid Glass; the rest are plain grouped capsules.
-struct ModePill: View {
-    let mode: FocusMode
-    let selected: Bool
-    let canDelete: Bool
-    let onSelect: () -> Void
-    let onChangeApps: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onSelect) {
-                HStack(spacing: 12) {
-                    Image(systemName: mode.symbol)
-                        .font(.title3)
-                        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-                        .frame(width: 32)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(mode.name).font(.headline)
-                        Text(mode.selectionSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(mode.name), \(mode.selectionSummary)")
-            .accessibilityAddTraits(selected ? [.isSelected] : [])
-
-            Menu {
-                Button("Change Blocked Apps", systemImage: "app.badge.checkmark", action: onChangeApps)
-                Button("Edit Name and Icon", systemImage: "pencil", action: onEdit)
-                if canDelete {
-                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .background(Color(.tertiarySystemFill), in: Circle())
-                    .contentShape(Circle())
-            }
-            .accessibilityLabel("\(mode.name) options")
-        }
-        .padding(.leading, 16)
-        .padding(.trailing, 10)
-        .frame(height: 62)
-        .background {
-            if !selected {
-                Capsule().fill(Color(.secondarySystemGroupedBackground))
-            }
-        }
-        .glassEffect(selected ? .regular.tint(.accentColor.opacity(0.3)).interactive() : .identity, in: .capsule)
-    }
-}
-
-/// Stacked screen time bars by category. Tapping the card (except the range
-/// switch) opens Stats.
-struct ScreenTimeCard: View {
-    @Binding var range: StatsRange
-    let openStats: () -> Void
-
-    var body: some View {
-        let average = SampleStats.headline(range)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(range == .day ? "TODAY" : "DAILY AVERAGE")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(SampleStats.format(minutes: average))
-                        .font(.title.bold())
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text(SampleStats.change(range))
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.blue)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: openStats)
-                Picker("Range", selection: $range.animation(.snappy)) {
-                    ForEach(StatsRange.allCases) { Text($0.short).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 110)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .background(Color(.tertiarySystemFill), in: Circle())
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: openStats)
-                    .accessibilityLabel("Open Stats")
-                    .accessibilityAddTraits(.isButton)
-            }
-
-            Chart {
-                ForEach(SampleStats.bars(range)) { bar in
-                    BarMark(
-                        x: .value("Time", bar.label),
-                        y: .value("Minutes", bar.minutes)
-                    )
-                    .foregroundStyle(bar.category.color)
-                }
-                RuleMark(y: .value("Average", range == .day ? average / 24 : average))
-                    .foregroundStyle(.secondary)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            }
-            .chartYAxis(.hidden)
-            .chartXAxis {
-                AxisMarks(values: SampleStats.axisLabels(range)) { value in
-                    AxisValueLabel {
-                        if let label = value.as(String.self) {
-                            Text(SampleStats.axisText(label, range))
-                        }
-                    }
-                }
-            }
-            .frame(height: 118)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: openStats)
-
-            CategoryLegend(range: range)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: openStats)
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-    }
-}
-
-/// Colour key with each category's average.
-struct CategoryLegend: View {
-    let range: StatsRange
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 4) {
-            ForEach(SampleStats.Category.allCases) { category in
-                HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(category.color)
-                        .frame(width: 8, height: 8)
-                    Text(category.name).foregroundStyle(.secondary)
-                    Text(SampleStats.format(minutes: SampleStats.headline(range, category: category)))
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                }
-                .font(.caption)
-            }
-        }
     }
 }
