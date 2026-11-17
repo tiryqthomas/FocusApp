@@ -9,7 +9,7 @@ struct FocusCardApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                // Tapping the card outside the app: iOS reads its focuscard:// link,
+                // Tapping the card while no scan is running: iOS reads its focuscard:// link,
                 // shows a notification, and opening it lands here.
                 .onOpenURL { url in
                     Task { await model.handleCardLink(url) }

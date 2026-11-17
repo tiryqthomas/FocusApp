@@ -1,4 +1,3 @@
-import CoreNFC
 import FamilyControls
 import Foundation
 import Observation
@@ -93,30 +92,16 @@ final class AppModel {
         }
     }
 
-    /// Opened from the card's link (iOS reads the card in the background and offers
-    /// to open Focus Card). Toggles the lock if the link belongs to the paired card.
+    /// Opened from the card's link: the card was tapped while no scan was running
+    /// (iOS reads it in the background and offers to open Focus Card).
+    /// Locking and unlocking still need the button, so explain that.
     func handleCardLink(_ url: URL) async {
         guard url.scheme == "focuscard", url.host == "card" else { return }
-        guard let card,
-              let payload = NFCNDEFPayload.wellKnownTypeURIPayload(url: url)?.payload,
-              payload.map({ String(format: "%02X", $0) }).joined() == card.tagID
-        else {
-            print("[FocusCard] link from an unpaired card: \(url)")
-            alertMessage = NFCScanner.ScanError.rejected.errorDescription
-            return
-        }
         reload()
-        if lock != nil {
-            FocusEngine.unlock(store: store)
-        } else {
-            guard isAuthorized, !mode.isEmpty else {
-                alertMessage = "Allow Screen Time and choose apps first."
-                return
-            }
-            FocusEngine.lock(mode, store: store)
-        }
-        reload()
-        print("[FocusCard] card link toggled, locked now: \(lock != nil)")
+        print("[FocusCard] card tapped outside a scan: \(url)")
+        alertMessage = lock != nil
+            ? "Card tapped, but Focus Card wasn't scanning. Tap Scan card to unlock first, then hold your card to the top of the iPhone."
+            : "Card tapped, but Focus Card wasn't scanning. Tap Scan card to lock first, then hold your card to the top of the iPhone."
     }
 
     private func handle(_ error: Error) {
