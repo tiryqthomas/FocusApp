@@ -11,43 +11,57 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Cards") {
+                    LabeledContent("Card", value: model.card == nil ? "Not paired" : "Paired")
+                    Button(model.card == nil ? "Pair a Card" : "Pair a New Card") {
+                        Task { await model.pairCard() }
+                    }
+                }
+
                 Section {
                     Stepper(value: Binding(
                         get: { model.emergency.perWeek },
                         set: { model.setEmergencyPerWeek($0) }
                     ), in: 0...10) {
-                        LabeledContent("Per week", value: "\(model.emergency.perWeek)")
+                        LabeledContent("Unlocks a week", value: "\(model.emergency.perWeek)")
                     }
-                } header: {
-                    Text("Emergency unlocks")
-                } footer: {
-                    Text("\(model.emergency.remaining) left this week. They reset every Monday.")
-                }
-
-                Section("Recovery password") {
-                    LabeledContent("Password") {
+                    LabeledContent("Recovery password") {
                         Text(showCode ? model.recoveryCode : "FC-••••-••••")
                             .font(.body.monospaced())
                             .textSelection(.enabled)
                     }
-                    Button(showCode ? "Hide" : "Show") { showCode.toggle() }
+                    Button(showCode ? "Hide Password" : "Show Password") { showCode.toggle() }
                     if model.recoveryCodeSaved {
                         Label("Saved to Passwords", systemImage: "checkmark")
                             .foregroundStyle(.secondary)
                     } else {
                         Button("Save to Passwords") { showSave = true }
                     }
+                } header: {
+                    Text("Emergency")
+                } footer: {
+                    Text("\(model.emergency.remaining) emergency unlocks left this week. They reset every Monday.")
                 }
 
-                Section("Appearance") {
+                Section("App") {
                     Picker("Appearance", selection: Binding(
                         get: { model.appearance },
                         set: { model.setAppearance($0) }
                     )) {
                         ForEach(Appearance.allCases) { Text($0.title).tag($0) }
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
+                    Toggle("Haptics", isOn: Binding(
+                        get: { model.hapticsOn },
+                        set: { model.setHaptics($0) }
+                    ))
+                    .tint(Theme.focus)
+                    if model.isAuthorized {
+                        LabeledContent("Screen Time access", value: "Allowed")
+                    } else {
+                        Button("Allow Screen Time Access") {
+                            Task { await model.requestAuthorization() }
+                        }
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -103,26 +117,24 @@ struct SaveRecoveryView: View {
                     model.markRecoveryCodeSaved()
                     dismiss()
                 } label: {
-                    Text("Done, It's Saved").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                    Text("Done, It's Saved")
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
+                .buttonStyle(CapsuleButtonStyle(fill: .primary, text: Color(.systemBackground)))
             } else {
                 Button {
                     UIPasteboard.general.string = model.recoveryCode
                     copied = true
                     if let url = URL(string: "passwords://") { openURL(url) }
                 } label: {
-                    Text("Save to Passwords").font(.headline).frame(maxWidth: .infinity).frame(height: 54)
+                    Text("Save to Passwords")
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
+                .buttonStyle(CapsuleButtonStyle(fill: .primary, text: Color(.systemBackground)))
             }
             Button("Not Now") { dismiss() }
                 .padding(.bottom, 4)
         }
         .padding(24)
         .presentationDetents([.medium])
-        .sensoryFeedback(.success, trigger: copied)
+        .haptic(.success, enabled: model.hapticsOn, trigger: copied)
     }
 }

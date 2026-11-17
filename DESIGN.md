@@ -52,6 +52,17 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 | 26 | Saving the password | A "Save Recovery Password?" prompt on launch until saved, plus "Save to Passwords" in Settings. |
 | 27 | Stats screen | Range switch, category chips, smooth trend line, usage heatmap, top apps, Focus Card stats from the app's own lock history. |
 | 28 | No card, no password | "Forgot your password?" on the lost-card sheet starts a 24-hour wait (with "Are you sure?"). The countdown shows under the timer; card or password still unlock sooner; it can be cancelled; no emergency unlock is used. The shield lifts the next time the app opens after 24 hours, and a notification says when. (2026-11-17) |
+| 29 | Fitness-app look (2026-11-17) | Whoop-style redesign, canvas https://claude.ai/artifact/8gRKUqiUrMejxqSx4KK48S. Big numbers, rings, colour only where it means something: green focus/locked, blue screen time, orange pickups. |
+| 30 | Home top | Three rings: Focused today, Screen time, Pickups. Tapping opens Stats. |
+| 31 | Appearance (replaces dark-mode default) | Dark by default; System/Light/Dark kept in Settings. |
+| 32 | Lock button | Green capsule, black text. |
+| 33 | Home extras | "Focused this week" bars (today in green, vs last week) and the streak. |
+| 34 | Orb | No 3D orb. |
+| 35 | Locked background | Slow moving green and blue MeshGradient; still with Reduce Motion. |
+| 36 | Button glow | None. |
+| 37 | Home motion | Rings spring-fill when Home opens, with a light haptic. Home stays otherwise still. |
+| 38 | Spacing | 16 pt edges and gaps between blocks, 8 pt inside groups, 48 pt rows, 16 pt card padding, 58 pt main buttons, 44 pt pills. |
+| 39 | Focus Screen widget page | Asked for, then dropped (2026-11-17). Not built. |
 
 ## Platform limits to remember
 

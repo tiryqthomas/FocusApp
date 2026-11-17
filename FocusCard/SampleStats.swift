@@ -154,6 +154,14 @@ enum SampleStats {
         }
     }
 
+    /// Sample pickups today, until the Screen Time report is connected.
+    static let pickupsToday = 41
+
+    /// Ring targets on Home. Placeholders until they're editable.
+    static let focusGoalSeconds: Double = 4 * 3600
+    static let screenLimitMinutes: Double = 4 * 60
+    static let pickupsLimit: Double = 80
+
     static func format(minutes: Double) -> String {
         let m = Int(minutes.rounded())
         return "\(m / 60)h \(m % 60)m"

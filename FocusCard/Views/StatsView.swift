@@ -15,7 +15,9 @@ struct StatsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.spacing) {
+                // In the page, not the toolbar: a toolbar adds its own glass
+                // around the control, which drew a second outline.
                 Picker("Range", selection: $range.animation(.snappy)) {
                     ForEach(StatsRange.allCases) { Text($0.title).tag($0) }
                 }
@@ -24,6 +26,7 @@ struct StatsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(((category.map { $0.name + " · " } ?? "") + (range == .day ? "Today" : "Daily average")).uppercased())
                         .font(.caption.weight(.semibold))
+                        .tracking(1)
                         .foregroundStyle(.secondary)
                     Text(SampleStats.format(minutes: SampleStats.headline(range, category: category)))
                         .font(.largeTitle.bold())
@@ -33,29 +36,35 @@ struct StatsView: View {
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.blue)
                 }
+                .padding(.horizontal, 4)
 
                 categoryChips
 
                 card("Trend") { trend }
                 card("When you use your phone") { heatmap }
                 card("Top apps") { topApps }
-                card("Focus Card") { focusStats }
+                VStack(spacing: Theme.groupSpacing) {
+                    SectionLabel("Focus Card")
+                    focusStats.card(padding: 0)
+                }
 
                 Text("Screen time figures are samples until the Screen Time report is connected.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .padding(.horizontal, Theme.spacing)
+            .padding(.bottom, Theme.spacing * 2)
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Stats")
         .navigationBarTitleDisplayMode(.inline)
+
     }
 
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.groupSpacing) {
                 chip("All", color: .blue, selected: category == nil) { category = nil }
                 ForEach(SampleStats.Category.allCases) { c in
                     chip(c.name, color: c.color, selected: category == c) { category = c }
@@ -75,6 +84,7 @@ struct StatsView: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 14)
             .frame(height: 36)
+            .contentShape(Capsule())
             .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
             .background(selected ? Color.primary : Color(.tertiarySystemFill), in: Capsule())
         }
@@ -82,15 +92,14 @@ struct StatsView: View {
     }
 
     private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title.uppercased())
                 .font(.caption.weight(.semibold))
+                .tracking(1)
                 .foregroundStyle(.secondary)
             content()
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .card()
     }
 
     private var trend: some View {
@@ -187,16 +196,16 @@ struct StatsView: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(spacing: 0) {
                 DetailRow(label: "Locked this week") { Text(formatDuration(model.focusedThisWeek(now: context.date))) }
-                Divider()
+                RowDivider()
                 DetailRow(label: "Longest session") { Text(formatDuration(model.focusLog.longestSession)) }
-                Divider()
+                RowDivider()
                 DetailRow(label: "Streak") {
                     let days = model.focusLog.streak(now: context.date)
                     Text(days == 1 ? "1 day" : "\(days) days")
                 }
-                Divider()
+                RowDivider()
                 DetailRow(label: "Card unlocks") { Text("\(model.focusLog.cardUnlocks)") }
-                Divider()
+                RowDivider()
                 DetailRow(label: "Emergency unlocks used") { Text("\(model.emergency.used) of \(model.emergency.perWeek)") }
             }
         }
