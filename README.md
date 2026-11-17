@@ -1,47 +1,40 @@
-# Focus Card
+# Focus Card (simplified)
 
-Lock distracting iPhone apps with a tap of an NFC card. Choose a mode (Work, Sleep and so on), hold a paired card to the phone, and the mode's apps are blocked until a paired card is tapped again. You also get a few emergency unlocks each week.
+Scan an NFC card to block your chosen apps. Scan the same card again to unblock them. Plain Apple styling.
 
-Design canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ. Decisions are listed in [DESIGN.md](DESIGN.md).
-
-## What you need
-
-- A Mac with Xcode 26 or later
-- An iPhone on iOS 26 or later. The simulator can't do NFC or Screen Time.
-- A paid Apple Developer account
-- NFC cards or stickers. NTAG213, NTAG215 or NTAG216 work best.
+This branch is the core loop only, for testing. The full version (modes, schedules, emergency unlocks, lost-card recovery, stats, Y2K theme) is on `claude/first-version`, and its files are kept here under `Parked/`, which isn't part of any build target.
 
 ## Run it on your iPhone
 
 1. Open `FocusCard.xcodeproj` in Xcode.
-2. Click the **FocusCard** project at the top of the navigator. Under **Build Settings** for the project (not a target), set `BUNDLE_ID_PREFIX` to something unique to you, such as `com.yourname`. Every bundle ID and the App Group (`group.<prefix>.focuscard`) come from this setting.
-3. For each of the four targets (FocusCard, ShieldConfig, ActivityMonitor, ActivityReport), open **Signing & Capabilities**, tick **Automatically manage signing** and choose your **Team**.
-4. Connect your iPhone, select it as the run destination, and press **Run** (⌘R).
-5. If the iPhone asks, turn on **Developer Mode** (Settings, then Privacy & Security), and trust your developer certificate (Settings, then General, then VPN & Device Management).
+2. In the project's **Build Settings**, set `BUNDLE_ID_PREFIX` to something unique, such as `com.yourname`.
+3. For the two targets (FocusCard, ShieldConfig), open **Signing & Capabilities** and choose your **Team**.
+4. Pick your iPhone and press **Run** (⌘R). The simulator can't do NFC or Screen Time.
 
-If signing complains about the App Group or Family Controls, open **Signing & Capabilities** on the target that fails. Click **+ Capability** and add **App Groups** (tick `group.<prefix>.focuscard`) or **Family Controls**, then build again.
+## Using it
 
-Development builds can use Family Controls straight away. Releasing on the App Store would need Apple's Family Controls distribution approval.
+1. Tap **Allow Screen Time**.
+2. Tap **Pair card** and hold the card to the top of the iPhone. The card needs some text or a link written on it (NTAG213/215 stickers work).
+3. Tap **Blocked apps** and choose apps.
+4. Tap **Scan card to lock**. Tap **Scan card to unlock** and scan again to unlock.
 
-## How it's built
+## Bypass test list
+
+| Try this while locked | Expected |
+| --- | --- |
+| Restart the phone, force-quit the app, go Home | Apps stay blocked |
+| Delete Focus Card (or any app) | Not allowed while locked |
+| Change the date or time | Automatic time can't be turned off while locked |
+| Scan a different card | Rejected |
+| Settings, Screen Time, turn off Focus Card's access | Unblocks. No code can stop this; it's your safety exit |
+| Write the same text onto another sticker | Unlocks (card is identified by its text, not its chip) |
+
+## Folders
 
 | Folder | Target | What it does |
 | --- | --- | --- |
-| `FocusCard/` | App | SwiftUI screens, NFC scanning (Core NFC) and the app state |
-| `Shared/` | App, ShieldConfig, ActivityMonitor | Models, App Group storage, and locking and unlocking (ManagedSettings) |
-| `ShieldConfig/` | Shield configuration extension | The black screen shown when you open a blocked app |
-| `ActivityMonitor/` | Device activity monitor extension | Starts scheduled modes (for example, Sleep at 11 PM) |
-| `ActivityReport/` | Device activity report extension | Draws the Screen Time stats (screen time, pickups, top apps) |
-| `Config/` | None | Info.plist additions and entitlements for each target |
-
-The project uses Xcode's synchronised folders, so new files added to a folder join its target automatically.
-
-Apple keeps Screen Time numbers inside the report extension. The app can show the stats views, but it can't read the numbers.
-
-## Minimal Home Screen
-
-Settings in the app has a **Minimal Home Screen** guide. It walks through an iOS Focus with a near-empty Home Screen page, plus a Shortcuts automation. The automation uses the app's **Is Focus Card Locked?** action to turn that Focus and grayscale on when you lock, and off when you unlock.
-
-## Status
-
-First version, written without a compiler. It hasn't been built or run yet, so expect a few compile fixes on the first build.
+| `FocusCard/` | App | Screens, NFC scanning and app state |
+| `Shared/` | App, ShieldConfig | Models, App Group storage, lock and unlock |
+| `ShieldConfig/` | Shield extension | The screen shown when you open a blocked app |
+| `Config/` | None | Info.plists and entitlements |
+| `Parked/` | None | Full-version code, not built |

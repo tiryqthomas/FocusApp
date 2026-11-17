@@ -10,7 +10,6 @@ struct FocusCardApp: App {
             RootView()
                 .environment(model)
                 .onChange(of: scenePhase) { _, phase in
-                    // A scheduled mode may have locked while the app was closed.
                     if phase == .active { model.reload() }
                 }
         }
