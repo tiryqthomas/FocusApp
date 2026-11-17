@@ -1,6 +1,7 @@
 import FamilyControls
 import Foundation
 import Observation
+import UserNotifications
 
 /// The core loop: pair a card, choose apps, scan to lock, scan again to unlock.
 @MainActor
@@ -39,6 +40,41 @@ final class AppModel {
         appearance = store.appearance
         recoveryCode = store.recoveryCode
         recoveryCodeSaved = store.recoveryCodeSaved
+        // The 24-hour wait ends the next time the app runs after it's up.
+        if let releaseAt = lock?.releaseAt, releaseAt <= .now {
+            endLock(.wait, at: releaseAt)
+        }
+    }
+
+    static let waitLength: TimeInterval = 24 * 60 * 60
+    private static let waitNotificationID = "focuscard.wait"
+
+    /// Last resort with no card and no password: the lock ends by itself in 24 hours.
+    /// The date and time stay automatic while locked, so the clock can't be moved ahead.
+    func startWait() async {
+        guard var current = store.lock, current.releaseAt == nil else { return }
+        let releaseAt = Date.now.addingTimeInterval(Self.waitLength)
+        current.releaseAt = releaseAt
+        store.lock = current
+        reload()
+
+        // A reminder when the time is up, since the shield only lifts once the app opens.
+        let center = UNUserNotificationCenter.current()
+        _ = try? await center.requestAuthorization(options: [.alert, .sound])
+        let content = UNMutableNotificationContent()
+        content.title = "Focus Card"
+        content.body = "Your 24-hour wait is over. Open Focus Card to unlock your apps."
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Self.waitLength, repeats: false)
+        try? await center.add(UNNotificationRequest(identifier: Self.waitNotificationID, content: content, trigger: trigger))
+    }
+
+    func cancelWait() {
+        guard var current = store.lock, current.releaseAt != nil else { return }
+        current.releaseAt = nil
+        store.lock = current
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.waitNotificationID])
+        reload()
     }
 
     /// Offers to save the recovery code, once per launch, until it's saved.
@@ -106,10 +142,13 @@ final class AppModel {
         return true
     }
 
-    private func endLock(_ method: UnlockMethod) {
+    private func endLock(_ method: UnlockMethod, at end: Date = .now) {
+        if lock?.releaseAt != nil, method != .wait {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.waitNotificationID])
+        }
         if let lock {
             var log = store.focusLog
-            log.add(from: lock.since, to: .now)
+            log.add(from: lock.since, to: end)
             if method == .card { log.cardUnlocks += 1 }
             store.focusLog = log
         }
