@@ -39,30 +39,38 @@ final class SharedStore {
         set { save(newValue, "lockState") }
     }
 
-    /// Emergency unlocks allowed each week (Monday to Sunday). Default 5.
-    var emergencyAllowance: Int {
-        get { defaults.object(forKey: "emergencyAllowance") as? Int ?? 5 }
-        set { defaults.set(newValue, forKey: "emergencyAllowance") }
+    var emergency: EmergencyAllowance {
+        get { load("emergency") ?? EmergencyAllowance() }
+        set { save(newValue, "emergency") }
     }
 
-    /// When each emergency unlock was used.
-    var emergencyUses: [Date] {
-        get { load("emergencyUses") ?? [] }
-        set { save(newValue, "emergencyUses") }
+    /// Made once, on first launch. Unlocks without the card.
+    var recoveryCode: String {
+        if let code: String = load("recoveryCode") { return code }
+        let code = Self.makeRecoveryCode()
+        save(code, "recoveryCode")
+        return code
     }
 
-    /// SHA-256 of the recovery code. The code itself is shown once and never stored.
-    var recoveryCodeHash: String? {
-        get { defaults.string(forKey: "recoveryCodeHash") }
-        set { defaults.set(newValue, forKey: "recoveryCodeHash") }
+    var recoveryCodeSaved: Bool {
+        get { load("recoveryCodeSaved") ?? false }
+        set { save(newValue, "recoveryCodeSaved") }
     }
-}
 
-extension Calendar {
-    /// Emergency unlocks refill every Monday.
-    static func startOfFocusWeek(for date: Date = .now) -> Date {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    var focusLog: FocusLog {
+        get { load("focusLog") ?? FocusLog() }
+        set { save(newValue, "focusLog") }
+    }
+
+    var appearance: Appearance {
+        get { load("appearance") ?? .system }
+        set { save(newValue, "appearance") }
+    }
+
+    /// "FC-7K2M-9QXD". Leaves out 0, O, 1 and I so it's easy to read back.
+    static func makeRecoveryCode() -> String {
+        let letters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        func group() -> String { String((0..<4).map { _ in letters.randomElement()! }) }
+        return "FC-\(group())-\(group())"
     }
 }

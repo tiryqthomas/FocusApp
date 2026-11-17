@@ -1,4 +1,3 @@
-import CryptoKit
 import FamilyControls
 import Foundation
 import Observation
@@ -15,74 +14,105 @@ final class AppModel {
     var lock: LockState?
     var isAuthorized = false
     var alertMessage: String?
-    var emergencyAllowance = 5
-    var emergencyUsedThisWeek = 0
-    var hasRecoveryCode = false
-    /// A just-made recovery code, shown once and then cleared.
-    var newRecoveryCode: String?
+    var emergency = EmergencyAllowance()
+    var focusLog = FocusLog()
+    var appearance: Appearance = .system
+    var recoveryCode = ""
+    var recoveryCodeSaved = false
+    /// Shown once per launch until the recovery code is saved.
+    var showSaveRecovery = false
 
-    init() {
-        reload()
-        // Cards paired before recovery codes existed get one on next launch.
-        if card != nil { makeRecoveryCodeIfNeeded() }
-    }
+    init() { reload() }
 
     func reload() {
         mode = store.mode
         card = store.card
         lock = store.lock
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
-        emergencyAllowance = store.emergencyAllowance
-        let weekStart = Calendar.startOfFocusWeek()
-        emergencyUsedThisWeek = store.emergencyUses.filter { $0 >= weekStart }.count
-        hasRecoveryCode = store.recoveryCodeHash != nil
+        var allowance = store.emergency
+        allowance.refillIfNewWeek()
+        store.emergency = allowance
+        emergency = allowance
+        focusLog = store.focusLog
+        appearance = store.appearance
+        recoveryCode = store.recoveryCode
+        recoveryCodeSaved = store.recoveryCodeSaved
     }
 
-    // MARK: Emergency unlocks
+    /// Offers to save the recovery code, once per launch, until it's saved.
+    func offerRecoverySaveIfNeeded() {
+        if !recoveryCodeSaved && lock == nil { showSaveRecovery = true }
+    }
 
-    var emergencyLeft: Int { max(0, emergencyAllowance - emergencyUsedThisWeek) }
+    func markRecoveryCodeSaved() {
+        store.recoveryCodeSaved = true
+        reload()
+    }
 
+    func setAppearance(_ value: Appearance) {
+        store.appearance = value
+        reload()
+    }
+
+    /// Emergency unlocks per week, 0 to 10. Raising it adds to this week's remaining.
+    func setEmergencyPerWeek(_ value: Int) {
+        var allowance = store.emergency
+        allowance.perWeek = min(10, max(0, value))
+        allowance.used = min(allowance.used, allowance.perWeek)
+        store.emergency = allowance
+        reload()
+    }
+
+    /// Today's locked time, including the session running now.
+    func focusedToday(now: Date = .now) -> Double {
+        var total = focusLog.seconds(on: now)
+        if let lock {
+            let start = max(lock.since, Calendar.current.startOfDay(for: now))
+            total += max(0, now.timeIntervalSince(start))
+        }
+        return total
+    }
+
+    /// Mon to Sun of this week, in seconds, including the running session.
+    func focusedThisWeek(now: Date = .now) -> Double {
+        let calendar = Calendar.current
+        let monday = EmergencyAllowance.mondayOfThisWeek(now)
+        var total = 0.0
+        for offset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: monday), day <= now else { continue }
+            total += focusLog.seconds(on: day)
+        }
+        if let lock { total += max(0, now.timeIntervalSince(max(lock.since, monday))) }
+        return total
+    }
+
+    /// Uses one emergency unlock. The caller has already asked "Are you sure?".
     func emergencyUnlock() {
-        guard lock != nil, emergencyLeft > 0 else { return }
-        store.emergencyUses = store.emergencyUses + [.now]
-        FocusEngine.unlock(store: store)
-        reload()
+        guard lock != nil, emergency.remaining > 0 else { return }
+        var allowance = store.emergency
+        allowance.used += 1
+        store.emergency = allowance
+        endLock(.emergency)
     }
 
-    /// Only reachable from Settings, which is only open while unlocked.
-    func setEmergencyAllowance(_ value: Int) {
-        guard lock == nil else { return }
-        store.emergencyAllowance = value
-        reload()
-    }
-
-    // MARK: Recovery code (card lost, or the scan won't work)
-
-    /// Makes the code once, like FC-7K4M-92QX, the first time a card is paired.
-    /// Only the hash is kept, so this is the only time the code can be seen.
-    /// There is no way to make a new one.
-    private func makeRecoveryCodeIfNeeded() {
-        guard lock == nil, store.recoveryCodeHash == nil else { return }
-        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-        func chunk() -> String { String((0..<4).map { _ in alphabet.randomElement()! }) }
-        let code = "FC-\(chunk())-\(chunk())"
-        store.recoveryCodeHash = Self.hash(code)
-        reload()
-        newRecoveryCode = code
-    }
-
-    /// Returns false when the code is wrong. Doesn't use an emergency unlock.
-    func unlockWithRecoveryCode(_ input: String) -> Bool {
-        guard lock != nil, let saved = store.recoveryCodeHash, Self.hash(input) == saved else { return false }
-        FocusEngine.unlock(store: store)
-        reload()
+    /// Unlocks with the recovery code. Doesn't use an emergency unlock.
+    /// Returns false when the code doesn't match.
+    func unlockWithRecovery(_ entered: String) -> Bool {
+        let cleaned = entered.uppercased().filter { !$0.isWhitespace }
+        guard lock != nil, cleaned == recoveryCode else { return false }
+        endLock(.recovery)
         return true
     }
 
-    /// Ignores case, spaces and dashes.
-    private static func hash(_ code: String) -> String {
-        let normal = code.uppercased().filter { $0.isLetter || $0.isNumber }
-        return SHA256.hash(data: Data(normal.utf8)).map { String(format: "%02x", $0) }.joined()
+    private func endLock(_ method: UnlockMethod) {
+        if let lock {
+            var log = store.focusLog
+            log.add(from: lock.since, to: .now)
+            if method == .card { log.cardUnlocks += 1 }
+            store.focusLog = log
+        }
+        FocusEngine.unlock(store: store)
+        reload()
     }
 
     func requestAuthorization() async {
@@ -112,7 +142,6 @@ final class AppModel {
             )
             store.card = PairedCard(tagID: id)
             reload()
-            makeRecoveryCodeIfNeeded()
         } catch {
             handle(error)
         }
@@ -145,7 +174,7 @@ final class AppModel {
             if locking {
                 FocusEngine.lock(mode, store: store)
             } else {
-                FocusEngine.unlock(store: store)
+                endLock(.card)
             }
             reload()
             print("[FocusCard] locked state now: \(lock != nil)")
