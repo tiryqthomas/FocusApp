@@ -51,6 +51,7 @@ Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 | 25 | Lost card (replaces 18) | Recovery password only (FC-XXXX-XXXX, made on first launch). No 24-hour wait, no "generate new" option. |
 | 26 | Saving the password | A "Save Recovery Password?" prompt on launch until saved, plus "Save to Passwords" in Settings. |
 | 27 | Stats screen | Range switch, category chips, smooth trend line, usage heatmap, top apps, Focus Card stats from the app's own lock history. |
+| 28 | No card, no password | "Forgot your password?" on the lost-card sheet starts a 24-hour wait (with "Are you sure?"). The countdown shows under the timer; card or password still unlock sooner; it can be cancelled; no emergency unlock is used. The shield lifts the next time the app opens after 24 hours, and a notification says when. (2026-11-17) |
 
 ## Platform limits to remember
 

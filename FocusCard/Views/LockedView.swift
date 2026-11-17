@@ -35,8 +35,14 @@ struct LockedView: View {
                                 .font(.system(size: 68, weight: .thin))
                                 .monospacedDigit()
                                 .contentTransition(.numericText())
-                            Text("Focused")
-                                .foregroundStyle(.secondary)
+                            if let releaseAt = lock.releaseAt {
+                                Text("Unlocks in \(Self.elapsed(max(0, releaseAt.timeIntervalSince(context.date))))")
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            } else {
+                                Text("Focused")
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .frame(width: 280, height: 280)
@@ -46,6 +52,11 @@ struct LockedView: View {
             }
 
             VStack(spacing: HomeView.spacing) {
+                if model.lock?.releaseAt != nil {
+                    Button("Cancel 24-Hour Wait") { model.cancelWait() }
+                        .font(.subheadline.weight(.medium))
+                        .frame(minHeight: 44)
+                }
                 Button {
                     Task { await model.scanToToggle() }
                 } label: {
@@ -76,6 +87,13 @@ struct LockedView: View {
         } message: {
             let left = max(0, model.emergency.remaining - 1)
             Text("\(model.lock?.modeName ?? "Work") unlocks now. You will have \(left) of \(model.emergency.perWeek) left this week. They reset on Monday.")
+        }
+        // Ends the 24-hour wait on time while the app is open.
+        .task(id: model.lock?.releaseAt) {
+            guard let releaseAt = model.lock?.releaseAt else { return }
+            let delay = releaseAt.timeIntervalSinceNow
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            if !Task.isCancelled { model.reload() }
         }
         .sheet(isPresented: $showRecovery) {
             RecoveryUnlockView()
@@ -145,6 +163,7 @@ struct RecoveryUnlockView: View {
     @State private var entered = ""
     @State private var wrong = false
     @State private var attempts = 0
+    @State private var confirmWait = false
 
     var body: some View {
         VStack(spacing: HomeView.spacing) {
@@ -172,10 +191,23 @@ struct RecoveryUnlockView: View {
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
+            if model.lock?.releaseAt == nil {
+                Button("Forgot your password?") { confirmWait = true }
+                    .font(.subheadline)
+            }
             Button("Cancel") { dismiss() }
         }
         .padding(24)
         .sensoryFeedback(.error, trigger: attempts)
+        .confirmationDialog("Wait 24 hours?", isPresented: $confirmWait, titleVisibility: .visible) {
+            Button("Start 24-Hour Wait", role: .destructive) {
+                Task { await model.startWait() }
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your apps unlock by themselves in 24 hours. Your card or password still unlocks sooner. This does not use an emergency unlock.")
+        }
     }
 
     private func tryUnlock() {
