@@ -64,6 +64,9 @@ struct HomeView: View {
             .controlSize(.large)
             .padding()
         }
+        .sheet(item: newCode) { item in
+            RecoveryCodeSheet(code: item.code)
+        }
         .familyActivityPicker(isPresented: $picking, selection: $selection)
         // Save whenever the picked list changes, and again when the picker closes,
         // so the new list is never lost to the order these two updates arrive in.
@@ -74,4 +77,13 @@ struct HomeView: View {
             if !isOpen { model.saveSelection(selection) }
         }
     }
+
+    private var newCode: Binding<CodeItem?> {
+        Binding(get: { model.newRecoveryCode.map(CodeItem.init) }, set: { model.newRecoveryCode = $0?.code })
+    }
+}
+
+struct CodeItem: Identifiable {
+    let code: String
+    var id: String { code }
 }

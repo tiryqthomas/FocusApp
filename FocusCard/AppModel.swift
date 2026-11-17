@@ -18,8 +18,14 @@ final class AppModel {
     var emergencyAllowance = 5
     var emergencyUsedThisWeek = 0
     var hasRecoveryCode = false
+    /// A just-made recovery code, shown once and then cleared.
+    var newRecoveryCode: String?
 
-    init() { reload() }
+    init() {
+        reload()
+        // Cards paired before recovery codes existed get one on next launch.
+        if card != nil { makeRecoveryCodeIfNeeded() }
+    }
 
     func reload() {
         mode = store.mode
@@ -52,16 +58,17 @@ final class AppModel {
 
     // MARK: Recovery code (card lost, or the scan won't work)
 
-    /// Makes a new code like FC-7K4M-92QX, replacing any old one, and returns it.
+    /// Makes the code once, like FC-7K4M-92QX, the first time a card is paired.
     /// Only the hash is kept, so this is the only time the code can be seen.
-    func makeRecoveryCode() -> String? {
-        guard lock == nil else { return nil }
+    /// There is no way to make a new one.
+    private func makeRecoveryCodeIfNeeded() {
+        guard lock == nil, store.recoveryCodeHash == nil else { return }
         let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         func chunk() -> String { String((0..<4).map { _ in alphabet.randomElement()! }) }
         let code = "FC-\(chunk())-\(chunk())"
         store.recoveryCodeHash = Self.hash(code)
         reload()
-        return code
+        newRecoveryCode = code
     }
 
     /// Returns false when the code is wrong. Doesn't use an emergency unlock.
@@ -105,6 +112,7 @@ final class AppModel {
             )
             store.card = PairedCard(tagID: id)
             reload()
+            makeRecoveryCodeIfNeeded()
         } catch {
             handle(error)
         }
