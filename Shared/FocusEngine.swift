@@ -24,7 +24,7 @@ enum FocusEngine {
             modeName: night ? "Night" : "Locked",
             since: .now,
             night: night,
-            wakeAt: night ? mode.nextWake() : nil
+            wakeAt: night ? mode.nextWake().addingTimeInterval(Double(mode.morningHours) * 3600) : nil
         )
     }
 

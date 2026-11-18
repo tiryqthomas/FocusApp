@@ -47,6 +47,12 @@ final class AppModel {
 
     var isNightLock: Bool { lock?.night == true }
 
+    /// True after wake time, while the morning protection hours are still running.
+    func isInMorningProtection(at date: Date = .now) -> Bool {
+        guard let lock, lock.night == true, let end = lock.wakeAt else { return false }
+        return date >= end.addingTimeInterval(-Double(night.morningHours) * 3600) && date < end
+    }
+
     /// True while a night lock is still before its wake time: the card does nothing yet.
     func cardIsHeld(at date: Date = .now) -> Bool {
         guard let lock, lock.night == true, let wake = lock.wakeAt else { return false }

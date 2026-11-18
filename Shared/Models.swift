@@ -12,6 +12,9 @@ struct FocusMode: Identifiable, Codable, Equatable {
     var startMinute = 0
     var wakeHour = 7
     var wakeMinute = 0
+    /// Hours after wake time that stay locked too. Nil means the default of 1.
+    var protectHours: Int? = nil
+    var morningHours: Int { protectHours ?? 1 }
 
     var isEmpty: Bool {
         selection.applicationTokens.isEmpty

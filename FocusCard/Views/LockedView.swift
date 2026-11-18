@@ -45,13 +45,14 @@ struct LockedView: View {
     @ViewBuilder
     private func content(now: Date) -> some View {
         let held = model.cardIsHeld(at: now)
+        let morningHeld = held && model.isInMorningProtection(at: now)
         VStack(spacing: 14) {
             Spacer()
             Image(systemName: held ? "moon.fill" : "lock.fill")
                 .font(.system(size: 64))
             if let lock = model.lock {
                 if held, let wake = lock.wakeAt {
-                    Text("GOOD NIGHT")
+                    Text(morningHeld ? "GOOD MORNING" : "GOOD NIGHT")
                         .font(Theme.lcdFont(26))
                         .tracking(2)
                     Text("UNLOCKS WITH YOUR CARD AFTER \(wake.formatted(date: .omitted, time: .shortened).uppercased())")
@@ -62,7 +63,7 @@ struct LockedView: View {
                         .font(Theme.lcdFont(56))
                         .monospacedDigit()
                         .shadow(color: Theme.glow.opacity(0.55), radius: 12)
-                    Text("UNTIL WAKE TIME")
+                    Text(morningHeld ? "OF MORNING PROTECTION LEFT" : "UNTIL YOUR CARD WORKS")
                         .font(Theme.lcdFont(14))
                         .opacity(0.7)
                 } else if lock.night == true {
