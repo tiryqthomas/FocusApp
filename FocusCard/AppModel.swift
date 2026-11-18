@@ -8,23 +8,18 @@ final class AppModel {
     private let store = SharedStore()
     private let scanner = NFCScanner()
 
-    var modes: [FocusMode] = []
+    var night = FocusMode(name: "Night")
     var cards: [PairedCard] = []
     var sessions: [FocusSession] = []
     var lock: LockState?
-    var emergencyAllowance = 5
+    var emergencyAllowance = 3
     var onboarded = false
     var isAuthorized = false
-    var selectedModeID: UUID?
     var alertMessage: String?
     var recoveryWaitEnd: Date?
     var recoveryCode: String?
 
     init() {
-        if !store.didCreateDefaultModes {
-            store.modes = [FocusMode(name: "Work"), FocusMode(name: "Sleep")]
-            store.didCreateDefaultModes = true
-        }
         reload()
     }
 
@@ -32,49 +27,30 @@ final class AppModel {
         finishRecoveryWaitIfDue()
         recoveryWaitEnd = store.recoveryWaitEnd
         recoveryCode = store.recoveryCode
-        modes = store.modes
+        night = store.night
         cards = store.cards
         sessions = store.sessions
         lock = store.lock
         emergencyAllowance = store.emergencyAllowance
         onboarded = store.onboarded
         isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
-        if selectedModeID == nil || !modes.contains(where: { $0.id == selectedModeID }) {
-            selectedModeID = modes.first?.id
-        }
     }
 
-    // MARK: Modes
+    // MARK: Night routine
 
-    var selectedMode: FocusMode? { modes.first { $0.id == selectedModeID } }
-
-    var lockedMode: FocusMode? {
-        guard let lock else { return nil }
-        return modes.first { $0.id == lock.modeID }
-    }
-
-    func saveMode(_ mode: FocusMode) {
-        var all = modes
-        if let index = all.firstIndex(where: { $0.id == mode.id }) {
-            all[index] = mode
-        } else {
-            all.append(mode)
-            selectedModeID = mode.id
-        }
-        store.modes = all
-        FocusSchedule.sync(all)
+    /// Saves bedtime, wake time and blocked apps, and re-arms the schedule.
+    func saveNight(_ mode: FocusMode) {
+        store.night = mode
+        FocusSchedule.sync(mode)
         reload()
     }
 
-    func deleteMode(_ mode: FocusMode) {
-        guard lock?.modeID != mode.id else {
-            alertMessage = "\(mode.name) is locked. Unlock it before deleting it."
-            return
-        }
-        let all = modes.filter { $0.id != mode.id }
-        store.modes = all
-        FocusSchedule.sync(all)
-        reload()
+    var isNightLock: Bool { lock?.night == true }
+
+    /// True while a night lock is still before its wake time: the card does nothing yet.
+    func cardIsHeld(at date: Date = .now) -> Bool {
+        guard let lock, lock.night == true, let wake = lock.wakeAt else { return false }
+        return date < wake
     }
 
     // MARK: Screen Time access
@@ -126,10 +102,10 @@ final class AppModel {
 
     // MARK: Lock and unlock
 
-    func lockSelected() async {
-        guard let mode = selectedMode else { return }
-        guard !mode.isEmpty else {
-            alertMessage = "Choose apps for \(mode.name) first."
+    /// Daytime "Lock now": same apps, card works any time.
+    func lockNow() async {
+        guard !night.isEmpty else {
+            alertMessage = "Choose apps to block first."
             return
         }
         guard !cards.isEmpty else {
@@ -139,11 +115,11 @@ final class AppModel {
         let paired = Set(cards.map(\.tagID))
         do {
             _ = try await scanner.scan(
-                prompt: "Hold your card near the top of the iPhone to lock \(mode.name).",
-                success: "\(mode.name) is locked.",
+                prompt: "Hold your card near the top of the iPhone to lock.",
+                success: "Locked.",
                 accept: { paired.contains($0) }
             )
-            FocusEngine.lock(mode, store: store)
+            FocusEngine.lock(night, night: false, store: store)
             reload()
         } catch {
             handle(error)
@@ -152,11 +128,15 @@ final class AppModel {
 
     func unlockWithCard() async {
         guard let lock else { return }
+        if cardIsHeld(), let wake = lock.wakeAt {
+            alertMessage = "Your card works after \(wake.formatted(date: .omitted, time: .shortened)). If you need your phone now, use an emergency unlock."
+            return
+        }
         let paired = Set(cards.map(\.tagID))
         do {
             _ = try await scanner.scan(
-                prompt: "Hold your card near the top of the iPhone to unlock \(lock.modeName).",
-                success: "\(lock.modeName) is unlocked.",
+                prompt: "Hold your card near the top of the iPhone to unlock.",
+                success: "Unlocked.",
                 accept: { paired.contains($0) }
             )
             FocusEngine.unlock(emergency: false, store: store)
@@ -230,35 +210,34 @@ final class AppModel {
         sessions = store.sessions
     }
 
-    // MARK: Focus Card stats (Decision 14)
+    // MARK: Night stats
 
-    struct FocusStats {
-        var timeLocked: TimeInterval
-        var previousTimeLocked: TimeInterval
+    struct NightStats {
+        var nightsCompleted: Int
         var emergencyUsed: Int
-        var streakDays: Int
+        var streak: Int
+        var averageHoursLocked: Double
     }
 
-    func focusStats(days: Int) -> FocusStats {
+    func nightStats(days: Int) -> NightStats {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
-        let currentStart = calendar.date(byAdding: .day, value: -(days - 1), to: today) ?? today
-        let previousStart = calendar.date(byAdding: .day, value: -days, to: currentStart) ?? currentStart
-
-        let current = sessions.filter { $0.start >= currentStart }
-        let previous = sessions.filter { $0.start >= previousStart && $0.start < currentStart }
-        return FocusStats(
-            timeLocked: current.reduce(0) { $0 + $1.duration },
-            previousTimeLocked: previous.reduce(0) { $0 + $1.duration },
-            emergencyUsed: current.filter(\.emergency).count,
-            streakDays: streakDays()
+        let start = calendar.date(byAdding: .day, value: -(days - 1), to: today) ?? today
+        let nights = sessions.filter { $0.night == true && $0.end >= start }
+        let done = nights.filter { !$0.emergency }
+        let hours = done.isEmpty ? 0 : done.reduce(0) { $0 + $1.duration } / Double(done.count) / 3600
+        return NightStats(
+            nightsCompleted: done.count,
+            emergencyUsed: nights.filter(\.emergency).count,
+            streak: streak(),
+            averageHoursLocked: hours
         )
     }
 
-    /// Days in a row, up to today, with at least one lock that ended with a card.
-    private func streakDays() -> Int {
+    /// Mornings in a row, up to today, that ended a night lock with the card.
+    func streak() -> Int {
         let calendar = Calendar.current
-        let days = Set(sessions.filter { !$0.emergency }.map { calendar.startOfDay(for: $0.end) })
+        let days = Set(sessions.filter { $0.night == true && !$0.emergency }.map { calendar.startOfDay(for: $0.end) })
         var day = calendar.startOfDay(for: .now)
         if !days.contains(day) {
             day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
@@ -269,6 +248,16 @@ final class AppModel {
             day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
         }
         return count
+    }
+
+    /// Last seven days, oldest first: did that morning end a night lock with the card?
+    func lastSevenNights() -> [Bool] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let done = Set(sessions.filter { $0.night == true && !$0.emergency }.map { calendar.startOfDay(for: $0.end) })
+        return (0..<7).reversed().map { back in
+            done.contains(calendar.date(byAdding: .day, value: -back, to: today) ?? today)
+        }
     }
 
     // MARK: Errors
