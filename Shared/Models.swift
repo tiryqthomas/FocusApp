@@ -1,15 +1,17 @@
 import Foundation
 import FamilyControls
 
-/// A named set of apps to block, such as Work or Sleep. (Decision 2)
+/// The one Night routine: which apps to block, bedtime and wake time.
 struct FocusMode: Identifiable, Codable, Equatable {
     var id = UUID()
     var name: String
     var selection = FamilyActivitySelection()
-    /// Decision 6: a mode can also start on a schedule. A card is always needed to unlock.
-    var scheduleEnabled = false
+    /// The lock starts by itself at bedtime. A card (after wake time) ends it.
+    var scheduleEnabled = true
     var startHour = 23
     var startMinute = 0
+    var wakeHour = 7
+    var wakeMinute = 0
 
     var isEmpty: Bool {
         selection.applicationTokens.isEmpty
@@ -29,17 +31,33 @@ struct FocusMode: Identifiable, Codable, Equatable {
         return parts.isEmpty ? "No apps chosen" : parts.joined(separator: ", ")
     }
 
-    var startTimeText: String {
+    private static func text(hour: Int, minute: Int) -> String {
         var components = DateComponents()
-        components.hour = startHour
-        components.minute = startMinute
+        components.hour = hour
+        components.minute = minute
         let date = Calendar.current.date(from: components) ?? .now
         return date.formatted(date: .omitted, time: .shortened)
     }
 
-    /// "8 apps · 11:00 PM"
-    var detail: String {
-        scheduleEnabled ? "\(selectionSummary) · \(startTimeText)" : selectionSummary
+    var startTimeText: String { Self.text(hour: startHour, minute: startMinute) }
+    var wakeTimeText: String { Self.text(hour: wakeHour, minute: wakeMinute) }
+
+    /// The next time the clock reads bedtime, after `date`.
+    func nextBedtime(after date: Date = .now) -> Date {
+        Calendar.current.nextDate(
+            after: date,
+            matching: DateComponents(hour: startHour, minute: startMinute),
+            matchingPolicy: .nextTime
+        ) ?? date
+    }
+
+    /// The next time the clock reads wake time, after `date`.
+    func nextWake(after date: Date = .now) -> Date {
+        Calendar.current.nextDate(
+            after: date,
+            matching: DateComponents(hour: wakeHour, minute: wakeMinute),
+            matchingPolicy: .nextTime
+        ) ?? date
     }
 }
 
@@ -57,6 +75,10 @@ struct LockState: Codable, Equatable {
     var modeID: UUID
     var modeName: String
     var since: Date
+    /// True for the bedtime lock, false for a daytime "Lock now".
+    var night: Bool? = nil
+    /// Night locks only: before this time the card does nothing.
+    var wakeAt: Date? = nil
 }
 
 /// One finished lock, kept for Focus Card stats.
@@ -67,6 +89,7 @@ struct FocusSession: Identifiable, Codable, Equatable {
     var end: Date
     /// True when it ended with an emergency unlock instead of a card.
     var emergency: Bool
+    var night: Bool? = nil
 
     var duration: TimeInterval { end.timeIntervalSince(start) }
 }

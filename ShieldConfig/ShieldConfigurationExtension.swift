@@ -22,13 +22,13 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     }
 
     private func make(name: String?) -> ShieldConfiguration {
-        let modeName = SharedStore().lock?.modeName ?? "Focus"
+        let isNight = SharedStore().lock?.night == true
         let glow = UIColor(red: 0x9E / 255, green: 0xC1 / 255, blue: 0xFF / 255, alpha: 1)
         return ShieldConfiguration(
             backgroundColor: .black,
             icon: UIImage(systemName: "lock.fill")?.withTintColor(glow, renderingMode: .alwaysOriginal),
             title: ShieldConfiguration.Label(text: "\(name ?? "This app") is locked", color: glow),
-            subtitle: ShieldConfiguration.Label(text: "\(modeName) is on. Tap your card in Focus Card to unlock.", color: glow.withAlphaComponent(0.8)),
+            subtitle: ShieldConfiguration.Label(text: isNight ? "Locked for the night. Tap your card in the app after wake time." : "Locked. Tap your card in the app to unlock.", color: glow.withAlphaComponent(0.8)),
             primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: .black),
             primaryButtonBackgroundColor: glow
         )

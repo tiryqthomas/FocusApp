@@ -21,7 +21,7 @@ struct RootView: View {
         .haptic(.success, trigger: model.lock)
         .preferredColorScheme(preferredScheme)
         .tint(Theme.blue)
-        .alert("Focus Card", isPresented: alertShown) {
+        .alert("Keycard", isPresented: alertShown) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.alertMessage ?? "")

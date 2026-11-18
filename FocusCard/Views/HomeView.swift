@@ -1,92 +1,71 @@
-import DeviceActivity
-import FamilyControls
 import SwiftUI
 
-/// Canvas screen 1: Focus, unlocked.
-/// Modes are a list of rows. Tap a row to select it. The "..." button changes its
-/// blocked apps, name and schedule, or deletes it. Cards and Settings sit in the
-/// bottom bar, like the softkeys on an old handset.
+/// Home: tonight's plan, the streak, night stats, and a daytime "Lock now".
+/// Cards and Settings sit in the bottom bar, like softkeys on an old handset.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var editing: FocusMode?
-    @State private var pickingApps = false
-    @State private var pickSelection = FamilyActivitySelection()
-    @State private var pickingModeID: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if model.cards.isEmpty {
-                NavigationLink { CardsView() } label: {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if model.cards.isEmpty {
+                    NavigationLink { CardsView() } label: {
+                        banner("Pair a card so you can unlock in the morning.")
+                    }
+                    .buttonStyle(.plain)
+                }
+                if model.night.isEmpty {
+                    NavigationLink { NightSetupView() } label: {
+                        banner("Choose what to lock at bedtime.")
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                tonightCard
+                streakCard
+
+                NavigationLink { StatsView() } label: {
                     HStack {
-                        Text("Pair a card to start locking.")
+                        Text("Night stats")
+                            .font(.headline)
                         Spacer()
                         Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
                     }
-                    .font(.subheadline.weight(.medium))
-                    .padding(14)
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                     .lcdPanel()
                 }
                 .buttonStyle(.plain)
-            }
 
-            NavigationLink { StatsView() } label: { StatsSummaryCard() }
-                .buttonStyle(.plain)
-
-            Text("Modes")
-                .font(.caption.weight(.bold))
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                HStack {
+                    Text("Emergency unlocks")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(model.emergencyLeft) of \(model.emergencyAllowance)")
+                        .fontWeight(.bold)
+                        .contentTransition(.numericText())
+                }
+                .font(.footnote)
                 .padding(.top, 4)
 
-            VStack(spacing: 0) {
-                ForEach(model.modes) { mode in
-                    ModeRow(
-                        mode: mode,
-                        selected: mode.id == model.selectedModeID,
-                        onSelect: { model.selectedModeID = mode.id },
-                        onChangeApps: { startPicking(mode) },
-                        onEdit: { editing = mode },
-                        onDelete: { model.deleteMode(mode) }
-                    )
-                }
                 Button {
-                    editing = FocusMode(name: "")
+                    Task { await model.lockNow() }
                 } label: {
-                    Text("+ New mode")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(Theme.blue)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
-                        .contentShape(Rectangle())
+                    Label("Lock now (tap card)", systemImage: "lock.fill")
                 }
-                .buttonStyle(.plain)
-            }
-            .lcdPanel()
-            .animation(.spring(duration: 0.35), value: model.modes)
+                .buttonStyle(SecondaryButtonStyle())
 
-            Spacer(minLength: 0)
-
-            HStack {
-                Text("Emergency unlocks")
+                Text("For daytime use, same apps and websites.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(model.emergencyLeft) of \(model.emergencyAllowance)")
-                    .fontWeight(.bold)
-                    .contentTransition(.numericText())
+                    .frame(maxWidth: .infinity)
             }
-            .font(.footnote)
-
-            Button {
-                Task { await model.lockSelected() }
-            } label: {
-                Label("Lock \(model.selectedMode?.name ?? "")", systemImage: "lock.fill")
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(model.selectedMode == nil)
+            .padding(14)
         }
-        .padding(14)
         .lcdScreen()
-        .navigationTitle("Focus")
+        .navigationTitle("Keycard")
         .navigationBarTitleDisplayMode(.inline)
         .lcdNavigationBar()
         .toolbar {
@@ -98,94 +77,85 @@ struct HomeView: View {
         }
         .toolbarBackground(Theme.bar, for: .bottomBar)
         .toolbarBackground(.visible, for: .bottomBar)
-        .sheet(item: $editing) { mode in
-            ModeEditView(mode: mode)
-        }
-        // Apple's picker: apps, categories and websites.
-        .familyActivityPicker(isPresented: $pickingApps, selection: $pickSelection)
-        .haptic(.selection, trigger: model.selectedModeID)
-        .onChange(of: pickingApps) { _, isOpen in
-            guard !isOpen, let id = pickingModeID,
-                  var mode = model.modes.first(where: { $0.id == id })
-            else { return }
-            mode.selection = pickSelection
-            model.saveMode(mode)
-            pickingModeID = nil
-        }
     }
 
-    private func startPicking(_ mode: FocusMode) {
-        pickingModeID = mode.id
-        pickSelection = mode.selection
-        pickingApps = true
+    private var tonightCard: some View {
+        let night = model.night
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Tonight")
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                Text("Locks in \(Self.span(from: context.date, to: night.nextBedtime(after: context.date)))")
+                    .font(.largeTitle.bold())
+                    .contentTransition(.numericText())
+            }
+            HStack(spacing: 12) {
+                timeBox("Bedtime", night.startTimeText)
+                timeBox("Wake", night.wakeTimeText)
+            }
+            Text(night.selectionSummary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .lcdPanel()
     }
-}
 
-/// One mode as a row. The row selects it; the "..." button opens its options.
-struct ModeRow: View {
-    let mode: FocusMode
-    let selected: Bool
-    let onSelect: () -> Void
-    let onChangeApps: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onSelect) {
-                HStack(spacing: 12) {
-                    Image(systemName: "lock.fill")
-                        .font(.title3)
-                        .frame(width: 32)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(mode.name)
-                            .font(.headline)
-                        Text(mode.detail)
-                            .font(.caption)
-                            .opacity(selected ? 0.85 : 0.6)
-                    }
-                    Spacer(minLength: 0)
+    private var streakCard: some View {
+        let nights = model.lastSevenNights()
+        return HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Phone-free nights")
+                    .font(.caption.weight(.bold))
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+                Text(model.streak() == 1 ? "1 in a row" : "\(model.streak()) in a row")
+                    .font(.title.bold())
+            }
+            Spacer()
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(Array(nights.enumerated()), id: \.offset) { _, done in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(done ? Color.primary : Color.secondary.opacity(0.3))
+                        .frame(width: 10, height: 28)
                 }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(selected ? .isSelected : [])
-
-            Menu {
-                Button("Change blocked apps", systemImage: "app.badge.checkmark", action: onChangeApps)
-                Button("Name and schedule", systemImage: "pencil", action: onEdit)
-                Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
-            } label: {
-                Text("...")
-                    .font(.headline)
-                    .frame(width: 40, height: 32)
-                    .overlay(Rectangle().strokeBorder(selected ? Color.white : Theme.buttonLine, lineWidth: 1))
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("\(mode.name) options")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .foregroundStyle(selected ? Color.white : Color.primary)
-        .background(selected ? Theme.blue : Theme.panel)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Theme.line).frame(height: 1)
-        }
-        .animation(.spring(duration: 0.3), value: selected)
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .lcdPanel()
     }
-}
 
-/// Home's stats card. The numbers are drawn by the Screen Time report extension.
-struct StatsSummaryCard: View {
-    var body: some View {
-        DeviceActivityReport(.summary, filter: StatsRange.week.filter())
-            .frame(height: 84)
-            .allowsHitTesting(false)
-            .padding(14)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .lcdPanel()
-            .accessibilityLabel("Screen time stats")
+    private func timeBox(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3.weight(.semibold))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.lcd)
+    }
+
+    private func banner(_ text: String) -> some View {
+        HStack {
+            Text(text)
+            Spacer()
+            Image(systemName: "chevron.right")
+        }
+        .font(.subheadline.weight(.medium))
+        .padding(14)
+        .lcdPanel()
+    }
+
+    /// "3h 12m" or "42m"
+    static func span(from start: Date, to end: Date) -> String {
+        let minutes = max(0, Int(end.timeIntervalSince(start) / 60))
+        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
 }

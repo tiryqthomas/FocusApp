@@ -40,7 +40,7 @@ Apple keeps Screen Time numbers inside the report extension. The app can show th
 
 ## Minimal Home Screen
 
-Settings in the app has a **Minimal Home Screen** guide. It walks through an iOS Focus with a near-empty Home Screen page, plus a Shortcuts automation. The automation uses the app's **Is Focus Card Locked?** action to turn that Focus and grayscale on when you lock, and off when you unlock.
+The Minimal Home Screen guide and the "Is Focus Card Locked?" action were removed in the bedtime version.
 
 ## Status
 

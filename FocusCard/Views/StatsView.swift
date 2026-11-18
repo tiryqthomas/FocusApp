@@ -1,149 +1,76 @@
-import DeviceActivity
-import FamilyControls
-import ManagedSettings
 import SwiftUI
 
-extension DeviceActivityReport.Context {
-    static let summary = Self("summary")
-    static let statsDay = Self("statsDay")
-    static let statsWeek = Self("statsWeek")
-    static let statsMonth = Self("statsMonth")
-}
-
-/// Decision 13: Day, Week and Month, starting on Week.
-/// Ranges must match `Period` in the report extension.
-enum StatsRange: String, CaseIterable, Identifiable {
-    case day = "Day"
-    case week = "Week"
-    case month = "Month"
-
-    var id: String { rawValue }
-
-    var days: Int {
-        switch self {
-        case .day: 1
-        case .week: 7
-        case .month: 28
-        }
-    }
-
-    var context: DeviceActivityReport.Context {
-        switch self {
-        case .day: .statsDay
-        case .week: .statsWeek
-        case .month: .statsMonth
-        }
-    }
-
-    /// `categories` limits the report to the chosen categories. Empty means all.
-    func filter(categories: Set<ActivityCategoryToken> = []) -> DeviceActivityFilter {
-        let calendar = Calendar.current
-        let now = Date.now
-        let today = calendar.startOfDay(for: now)
-        func since(daysBack: Int) -> DateInterval {
-            DateInterval(start: calendar.date(byAdding: .day, value: -daysBack, to: today) ?? today, end: now)
-        }
-        switch self {
-        case .day:
-            return DeviceActivityFilter(segment: .hourly(during: since(daysBack: 1)), users: .all, devices: .init([.iPhone]), categories: categories)
-        case .week:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 27)), users: .all, devices: .init([.iPhone]), categories: categories)
-        case .month:
-            return DeviceActivityFilter(segment: .daily(during: since(daysBack: 55)), users: .all, devices: .init([.iPhone]), categories: categories)
-        }
-    }
-}
-
-/// Canvas screen 6.
+/// Night stats: Week or Month, from the nights Keycard has recorded on this iPhone.
 struct StatsView: View {
     @Environment(AppModel.self) private var model
-    @State private var range: StatsRange = .week
-    @State private var categorySelection = FamilyActivitySelection()
-    @State private var choosingCategories = false
+    @State private var range: Range = .week
+
+    enum Range: String, CaseIterable, Identifiable {
+        case week = "Week"
+        case month = "Month"
+        var id: String { rawValue }
+        var days: Int { self == .week ? 7 : 28 }
+    }
 
     var body: some View {
+        let stats = model.nightStats(days: range.days)
         ScrollView {
-            VStack(spacing: 18) {
-                LCDSegment(options: StatsRange.allCases, title: { $0.rawValue }, selection: $range)
+            VStack(spacing: 14) {
+                LCDSegment(options: Range.allCases, title: { $0.rawValue }, selection: $range)
 
-                categoryRow
+                HStack(spacing: 12) {
+                    tile("Phone-free nights", "\(stats.nightsCompleted) of \(range.days)")
+                    tile("Current streak", stats.streak == 1 ? "1 night" : "\(stats.streak) nights")
+                }
 
-                DeviceActivityReport(range.context, filter: range.filter(categories: categorySelection.categoryTokens))
-                    .frame(minHeight: 720)
+                VStack(alignment: .leading, spacing: 0) {
+                    row("Average night locked", value: Self.hours(stats.averageHoursLocked))
+                    Divider()
+                    row("Emergency unlocks used",
+                        value: range == .week
+                            ? "\(model.emergencyUsedThisWeek) of \(model.emergencyAllowance)"
+                            : "\(stats.emergencyUsed)")
+                }
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lcdPanel()
 
-                focusCardStats
+                Text("Screen time after bedtime and time to first social app are not tracked yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             .padding(20)
         }
         .lcdScreen()
         .lcdNavigationBar()
-        .navigationTitle("Stats")
+        .navigationTitle("Night stats")
         .navigationBarTitleDisplayMode(.inline)
-        .familyActivityPicker(isPresented: $choosingCategories, selection: $categorySelection)
     }
 
-    /// Category filter, in the same glass style as the rest of the screen (canvas screen 6).
-    private var categoryRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Categories")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Text(categorySelection.categoryTokens.isEmpty
-                     ? "All categories"
-                     : "\(categorySelection.categoryTokens.count) selected")
-                    .font(.headline)
-            }
-            Spacer()
-            Button("Choose") { choosingCategories = true }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Theme.titleGradient)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .lcdPanel()
-    }
-
-    private var focusCardStats: some View {
-        let stats = model.focusStats(days: range.days)
-        let change = stats.timeLocked - stats.previousTimeLocked
-        return VStack(alignment: .leading, spacing: 0) {
-            Text("Focus Card")
+    private func tile(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-                .padding(.top, 14)
-                .padding(.bottom, 4)
-            row("Time locked", value: Self.duration(stats.timeLocked),
-                note: stats.previousTimeLocked > 0 ? "\(change < 0 ? "↓" : "↑") \(Self.duration(abs(change)))" : nil)
-            Divider()
-            row("Streak", value: stats.streakDays == 1 ? "1 day" : "\(stats.streakDays) days", note: nil)
-            Divider()
-            row("Emergency unlocks used",
-                value: range == .week ? "\(model.emergencyUsedThisWeek) of \(model.emergencyAllowance)" : "\(stats.emergencyUsed)",
-                note: nil)
+            Text(value)
+                .font(.title2.bold())
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 4)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .lcdPanel()
     }
 
-    private func row(_ name: String, value: String, note: String?) -> some View {
+    private func row(_ name: String, value: String) -> some View {
         HStack {
             Text(name)
             Spacer()
             Text(value).fontWeight(.semibold)
-            if let note { Text(note).foregroundStyle(.secondary) }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
     }
 
-    static func duration(_ seconds: TimeInterval) -> String {
-        let minutes = Int((seconds / 60).rounded())
+    static func hours(_ value: Double) -> String {
+        let minutes = Int((value * 60).rounded())
         return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
 }

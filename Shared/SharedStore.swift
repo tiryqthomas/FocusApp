@@ -24,9 +24,9 @@ final class SharedStore {
         }
     }
 
-    var modes: [FocusMode] {
-        get { load("modes") ?? [] }
-        set { save(newValue, "modes") }
+    var night: FocusMode {
+        get { load("night") ?? FocusMode(name: "Night") }
+        set { save(newValue, "night") }
     }
 
     var cards: [PairedCard] {
@@ -44,9 +44,9 @@ final class SharedStore {
         set { save(newValue, "lock") }
     }
 
-    /// Decision 5: 5 a week by default, editable in Settings.
+    /// 3 a week by default, editable in Settings.
     var emergencyAllowance: Int {
-        get { defaults.object(forKey: "emergencyAllowance") as? Int ?? 5 }
+        get { defaults.object(forKey: "emergencyAllowance") as? Int ?? 3 }
         set { defaults.set(newValue, forKey: "emergencyAllowance") }
     }
 
@@ -70,10 +70,6 @@ final class SharedStore {
         }
     }
 
-    var didCreateDefaultModes: Bool {
-        get { defaults.bool(forKey: "didCreateDefaultModes") }
-        set { defaults.set(newValue, forKey: "didCreateDefaultModes") }
-    }
 }
 
 extension Calendar {

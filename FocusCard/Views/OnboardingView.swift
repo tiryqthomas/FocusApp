@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Welcome, Screen Time access, pairing a card (with Skip), then the recovery code.
+/// Welcome, Screen Time access, set your night, pair a card (with Skip), then the recovery code.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step = 0
@@ -15,20 +15,31 @@ struct OnboardingView: View {
                 case 0:
                     page(
                         symbol: "lock.fill",
-                        title: "Focus Card",
-                        text: "Lock distracting apps with a tap of your card."
+                        title: "Keycard",
+                        text: "Social apps lock at bedtime. Get up and tap your card in the morning to get them back."
                     )
                 case 1:
                     page(
                         symbol: "hourglass",
                         title: "Screen Time access",
-                        text: "Focus Card uses Screen Time to block the apps you choose. Your data stays on this iPhone."
+                        text: "Keycard uses Screen Time to block the apps you choose. Your data stays on this iPhone."
                     )
                 case 2:
+                    VStack(spacing: 18) {
+                        Text("Set your night")
+                            .font(.largeTitle.bold())
+                        Form { NightSetupFields() }
+                            .lcdForm()
+                            .frame(height: 220)
+                        Text("Phone, Messages and Clock stay open.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                case 3:
                     page(
                         symbol: "wave.3.right",
                         title: "Pair your card",
-                        text: "Hold an NFC card or sticker near the top of the iPhone."
+                        text: "Hold an NFC card or sticker near the top of the iPhone. Then keep it outside your bedroom."
                     )
                 default:
                     VStack(spacing: 18) {
@@ -74,6 +85,9 @@ struct OnboardingView: View {
             }
             .buttonStyle(PrimaryButtonStyle())
         case 2:
+            Button("Next: pair your card") { step = 3 }
+                .buttonStyle(PrimaryButtonStyle())
+        case 3:
             VStack(spacing: 8) {
                 Button("Pair card") {
                     Task {
@@ -100,7 +114,7 @@ struct OnboardingView: View {
 
     private func goToRecovery() {
         model.ensureRecoveryCode()
-        step = 3
+        step = 4
     }
 
     private func icon(_ symbol: String) -> some View {
