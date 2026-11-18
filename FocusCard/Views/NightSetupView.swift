@@ -11,6 +11,7 @@ struct NightSetupFields: View {
     var body: some View {
         DatePicker("Bedtime", selection: bedtime, displayedComponents: .hourAndMinute)
         DatePicker("Wake time", selection: wake, displayedComponents: .hourAndMinute)
+        Toggle("Wake alarm", isOn: wakeAlarm)
         Stepper(value: protection, in: 0...3) {
             LabeledContent("Morning protection", value: model.night.morningHours == 0 ? "Off" : (model.night.morningHours == 1 ? "1 hour" : "\(model.night.morningHours) hours"))
         }
@@ -28,6 +29,17 @@ struct NightSetupFields: View {
             night.selection = selection
             model.saveNight(night)
         }
+    }
+
+    private var wakeAlarm: Binding<Bool> {
+        Binding(
+            get: { model.night.wakeAlarmOn },
+            set: { value in
+                var night = model.night
+                night.wakeAlarm = value
+                model.saveNight(night)
+            }
+        )
     }
 
     private var protection: Binding<Int> {

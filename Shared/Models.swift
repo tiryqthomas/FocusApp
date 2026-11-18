@@ -15,6 +15,9 @@ struct FocusMode: Identifiable, Codable, Equatable {
     /// Hours after wake time that stay locked too. Nil means the default of 1.
     var protectHours: Int? = nil
     var morningHours: Int { protectHours ?? 1 }
+    /// Keycard rings its own wake alarm at wake time. Nil means on.
+    var wakeAlarm: Bool? = nil
+    var wakeAlarmOn: Bool { wakeAlarm ?? true }
 
     var isEmpty: Bool {
         selection.applicationTokens.isEmpty

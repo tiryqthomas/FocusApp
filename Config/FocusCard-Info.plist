@@ -4,6 +4,8 @@
 <dict>
 	<key>AppGroupID</key>
 	<string>$(APP_GROUP_ID)</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>Keycard rings a wake alarm at your wake time.</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>Focus Card reads your card to lock and unlock apps.</string>
 </dict>

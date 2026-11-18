@@ -42,6 +42,7 @@ final class AppModel {
     func saveNight(_ mode: FocusMode) {
         store.night = mode
         FocusSchedule.sync(mode)
+        Task { await WakeAlarm.sync(mode) }
         reload()
     }
 
