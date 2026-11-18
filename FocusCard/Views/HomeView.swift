@@ -65,7 +65,7 @@ struct HomeView: View {
             .padding(14)
         }
         .lcdScreen()
-        .navigationTitle("Keycard")
+        .navigationTitle("SleepKey")
         .navigationBarTitleDisplayMode(.inline)
         .lcdNavigationBar()
         .toolbar {

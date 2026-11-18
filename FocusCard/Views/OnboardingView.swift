@@ -15,14 +15,14 @@ struct OnboardingView: View {
                 case 0:
                     page(
                         symbol: "lock.fill",
-                        title: "Keycard",
+                        title: "SleepKey",
                         text: "Social apps lock at bedtime. Get up and tap your card in the morning to get them back."
                     )
                 case 1:
                     page(
                         symbol: "hourglass",
                         title: "Screen Time access",
-                        text: "Keycard uses Screen Time to block the apps you choose. Your data stays on this iPhone."
+                        text: "SleepKey uses Screen Time to block the apps you choose. Your data stays on this iPhone."
                     )
                 case 2:
                     VStack(spacing: 18) {

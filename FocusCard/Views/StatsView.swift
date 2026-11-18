@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Night stats: Week or Month, from the nights Keycard has recorded on this iPhone.
+/// Night stats: Week or Month, from the nights SleepKey has recorded on this iPhone.
 struct StatsView: View {
     @Environment(AppModel.self) private var model
     @State private var range: Range = .week

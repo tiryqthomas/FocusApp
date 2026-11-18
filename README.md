@@ -1,4 +1,4 @@
-# Focus Card
+# SleepKey
 
 Lock distracting iPhone apps with a tap of an NFC card. Choose a mode (Work, Sleep and so on), hold a paired card to the phone, and the mode's apps are blocked until a paired card is tapped again. You also get a few emergency unlocks each week.
 

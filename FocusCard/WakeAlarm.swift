@@ -1,9 +1,9 @@
 import AlarmKit
 import SwiftUI
 
-struct KeycardAlarmMetadata: AlarmMetadata {}
+struct SleepKeyAlarmMetadata: AlarmMetadata {}
 
-/// Keycard's own daily wake alarm, made with AlarmKit (iOS 26). It rings like a
+/// SleepKey's own daily wake alarm, made with AlarmKit (iOS 26). It rings like a
 /// system alarm, even on silent or in a Focus. Apple gives apps no access to the
 /// alarms in the Clock app, so this is a separate alarm.
 enum WakeAlarm {
@@ -24,7 +24,7 @@ enum WakeAlarm {
         )
         let attributes = AlarmAttributes(
             presentation: AlarmPresentation(alert: alert),
-            metadata: KeycardAlarmMetadata(),
+            metadata: SleepKeyAlarmMetadata(),
             tintColor: .blue
         )
         let configuration = AlarmManager.AlarmConfiguration(
