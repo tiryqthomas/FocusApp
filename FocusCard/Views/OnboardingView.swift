@@ -39,7 +39,7 @@ struct OnboardingView: View {
                     page(
                         symbol: "wave.3.right",
                         title: "Pair your card",
-                        text: "Hold an NFC card or sticker near the top of the iPhone. Then keep it outside your bedroom."
+                        text: "Hold an NFC card or sticker near the top of the iPhone. Keep it outside your bedroom: once the night lock is on, the card only works after your wake time."
                     )
                 default:
                     VStack(spacing: 18) {

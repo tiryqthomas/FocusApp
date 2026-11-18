@@ -89,19 +89,12 @@ struct LockedView: View {
             }
             Spacer()
             VStack(spacing: 10) {
-                if held {
-                    Text("YOUR CARD DOES NOTHING BEFORE WAKE TIME.")
-                        .font(Theme.lcdFont(13))
-                        .multilineTextAlignment(.center)
-                        .opacity(0.7)
-                } else {
-                    Button {
-                        Task { await model.unlockWithCard() }
-                    } label: {
-                        Text("UNLOCK WITH CARD")
-                    }
-                    .buttonStyle(GlowButtonStyle())
+                Button {
+                    Task { await model.unlockWithCard() }
+                } label: {
+                    Text("UNLOCK WITH CARD")
                 }
+                .buttonStyle(GlowButtonStyle())
 
                 Button {
                     showEmergency = true
