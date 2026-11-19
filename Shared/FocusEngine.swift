@@ -4,12 +4,12 @@ import ManagedSettings
 import DeviceActivity
 
 extension ManagedSettingsStore.Name {
-    static let focusCard = Self("focuscard")
+    static let sleepKey = Self("sleepkey")
 }
 
 /// Locks and unlocks. Used by the app and by the bedtime monitor extension.
 enum FocusEngine {
-    static let settings = ManagedSettingsStore(named: .focusCard)
+    static let settings = ManagedSettingsStore(named: .sleepKey)
 
     /// `night` true: the bedtime lock, which the card can only end after wake time.
     static func lock(_ mode: FocusMode, night: Bool, store: SharedStore = SharedStore()) {

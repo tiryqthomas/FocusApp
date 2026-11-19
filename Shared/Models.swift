@@ -87,7 +87,7 @@ struct LockState: Codable, Equatable {
     var wakeAt: Date? = nil
 }
 
-/// One finished lock, kept for Focus Card stats.
+/// One finished lock, kept for SleepKey stats.
 struct FocusSession: Identifiable, Codable, Equatable {
     var id = UUID()
     var modeName: String

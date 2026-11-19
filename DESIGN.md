@@ -1,6 +1,6 @@
-# Focus Card design spec
+# SleepKey design spec
 
-Working name: Focus Card. "Brick" is avoided because an app with that name already exists.
+App name: SleepKey (earlier working names Focus Card and Keycard). "Brick" is avoided because an app with that name already exists.
 Canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ
 
 ## Brief

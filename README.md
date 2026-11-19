@@ -13,13 +13,13 @@ Design canvas: https://claude.ai/artifact/8ckgxnZXjFVwLiA4F1UpeJ. Decisions are 
 
 ## Run it on your iPhone
 
-1. Open `FocusCard.xcodeproj` in Xcode.
-2. Click the **FocusCard** project at the top of the navigator. Under **Build Settings** for the project (not a target), set `BUNDLE_ID_PREFIX` to something unique to you, such as `com.yourname`. Every bundle ID and the App Group (`group.<prefix>.focuscard`) come from this setting.
-3. For each of the four targets (FocusCard, ShieldConfig, ActivityMonitor, ActivityReport), open **Signing & Capabilities**, tick **Automatically manage signing** and choose your **Team**.
+1. Open `SleepKey.xcodeproj` in Xcode.
+2. Click the **SleepKey** project at the top of the navigator. Under **Build Settings** for the project (not a target), set `BUNDLE_ID_PREFIX` to something unique to you, such as `com.yourname`. Every bundle ID and the App Group (`group.<prefix>.sleepkey`) come from this setting.
+3. For each of the four targets (SleepKey, ShieldConfig, ActivityMonitor, ActivityReport), open **Signing & Capabilities**, tick **Automatically manage signing** and choose your **Team**.
 4. Connect your iPhone, select it as the run destination, and press **Run** (⌘R).
 5. If the iPhone asks, turn on **Developer Mode** (Settings, then Privacy & Security), and trust your developer certificate (Settings, then General, then VPN & Device Management).
 
-If signing complains about the App Group or Family Controls, open **Signing & Capabilities** on the target that fails. Click **+ Capability** and add **App Groups** (tick `group.<prefix>.focuscard`) or **Family Controls**, then build again.
+If signing complains about the App Group or Family Controls, open **Signing & Capabilities** on the target that fails. Click **+ Capability** and add **App Groups** (tick `group.<prefix>.sleepkey`) or **Family Controls**, then build again.
 
 Development builds can use Family Controls straight away. Releasing on the App Store would need Apple's Family Controls distribution approval.
 
@@ -27,7 +27,7 @@ Development builds can use Family Controls straight away. Releasing on the App S
 
 | Folder | Target | What it does |
 | --- | --- | --- |
-| `FocusCard/` | App | SwiftUI screens, NFC scanning (Core NFC) and the app state |
+| `SleepKey/` | App | SwiftUI screens, NFC scanning (Core NFC) and the app state |
 | `Shared/` | App, ShieldConfig, ActivityMonitor | Models, App Group storage, and locking and unlocking (ManagedSettings) |
 | `ShieldConfig/` | Shield configuration extension | The black screen shown when you open a blocked app |
 | `ActivityMonitor/` | Device activity monitor extension | Starts scheduled modes (for example, Sleep at 11 PM) |

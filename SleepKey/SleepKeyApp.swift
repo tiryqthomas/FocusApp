@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct FocusCardApp: App {
+struct SleepKeyApp: App {
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 
